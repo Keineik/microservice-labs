@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+echo "==> Applying database migrations (alembic upgrade head)"
+alembic upgrade head
+
+echo "==> Starting API on :8000"
+if [ "${UVICORN_RELOAD:-0}" = "1" ]; then
+    exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src
+else
+    exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+fi

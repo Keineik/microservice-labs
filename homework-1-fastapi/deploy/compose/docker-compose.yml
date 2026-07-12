@@ -1,0 +1,53 @@
+name: enrollment-api
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: enrollment
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d enrollment"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      # Build context is the project root (homework-1-fastapi/).
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    environment:
+      APP_DATABASE_URL: postgresql+asyncpg://app:app@postgres:5432/enrollment
+      APP_LOG_LEVEL: INFO
+      UVICORN_RELOAD: "1"
+    volumes:
+      # Mount source for hot-reload in dev (editable install points at /app/src).
+      - ../../src:/app/src
+      - ../../migrations:/app/migrations
+      - ../../scripts:/app/scripts
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Load-testing service — only started with the "load" profile (`make load`).
+  locust:
+    image: locustio/locust:2.31.6
+    profiles: ["load"]
+    volumes:
+      - ../../load:/mnt/locust
+    command: -f /mnt/locust/locustfile.py --host http://api:8000
+    ports:
+      - "8089:8089"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
