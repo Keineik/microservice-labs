@@ -1,89 +1,99 @@
-"""End-to-end tests exercising the real routers/services/repositories over an
-in-memory database."""
+"""End-to-end tests over the real routers/services/repositories on an in-memory
+database (see the `sample` fixture in conftest.py for the dataset)."""
 
 
-async def _make_student(client, code="SV0001", email="sv0001@univ.edu"):
+async def _register(client, student_id, offering_id, key=None):
+    headers = {"Idempotency-Key": key} if key else {}
     return await client.post(
-        "/api/v1/students",
-        json={"student_code": code, "full_name": "Nguyen Van A", "email": email},
+        "/api/v1/enrollments",
+        json={"student_id": student_id, "offering_id": offering_id},
+        headers=headers,
     )
 
 
-async def test_create_list_and_get_student(client):
-    resp = await _make_student(client)
-    assert resp.status_code == 201
-    body = resp.json()
-    assert body["id"] > 0
-    assert body["student_code"] == "SV0001"
+async def test_browse_offerings_and_terms(client, sample):
+    r = await client.get(f"/api/v1/offerings?term_id={sample['term']}")
+    assert r.status_code == 200
+    off = next(o for o in r.json()["items"] if o["id"] == sample["off"])
+    assert off["available_seats"] == 1
+    assert off["can_register"] is True
 
-    got = await client.get(f"/api/v1/students/{body['id']}")
-    assert got.status_code == 200
-
-    listed = await client.get("/api/v1/students?page=1&size=10")
-    assert listed.status_code == 200
-    assert listed.json()["total"] == 1
+    terms = (await client.get("/api/v1/terms")).json()
+    open_term = next(t for t in terms if t["id"] == sample["term"])
+    assert open_term["is_registration_open"] is True
 
 
-async def test_duplicate_student_code_is_409_problem(client):
-    assert (await _make_student(client)).status_code == 201
-    dup = await _make_student(client, email="other@univ.edu")  # same code
-    assert dup.status_code == 409
-    assert dup.headers["content-type"].startswith("application/problem+json")
-    assert dup.json()["status"] == 409
+async def test_register_success_decrements_seats(client, sample):
+    assert (await _register(client, sample["s1"], sample["off"])).status_code == 201
+    detail = (await client.get(f"/api/v1/offerings/{sample['off']}")).json()
+    assert detail["available_seats"] == 0
+    assert detail["can_register"] is False
 
 
-async def test_missing_student_is_404_problem(client):
-    resp = await client.get("/api/v1/students/999999")
-    assert resp.status_code == 404
-    body = resp.json()
-    assert body["status"] == 404
-    assert body["type"]  # RFC 7807 members present
+async def test_offering_full_is_409(client, sample):
+    assert (await _register(client, sample["s1"], sample["off"])).status_code == 201
+    r = await _register(client, sample["s2"], sample["off"])  # capacity is 1
+    assert r.status_code == 409
+    assert r.headers["content-type"].startswith("application/problem+json")
 
 
-async def test_bad_payload_is_422_problem(client):
-    resp = await client.post("/api/v1/students", json={"full_name": "missing code"})
-    assert resp.status_code == 422
-    assert resp.headers["content-type"].startswith("application/problem+json")
+async def test_duplicate_registration_is_409(client, sample):
+    assert (await _register(client, sample["s1"], sample["off2"])).status_code == 201
+    assert (await _register(client, sample["s1"], sample["off2"])).status_code == 409
 
 
-async def test_enrollment_is_idempotent(client):
-    student = (await _make_student(client)).json()
-    course = (
-        await client.post(
-            "/api/v1/courses",
-            json={"course_code": "CS101", "title": "Intro", "credits": 3},
-        )
+async def test_idempotent_registration_returns_same_row(client, sample):
+    r1 = await _register(client, sample["s1"], sample["off2"], key="reg-1")
+    r2 = await _register(client, sample["s1"], sample["off2"], key="reg-1")
+    assert r1.status_code == 201 and r2.status_code == 201
+    assert r1.json()["id"] == r2.json()["id"]
+
+
+async def test_schedule_clash_is_409(client, sample):
+    assert (await _register(client, sample["s1"], sample["off"])).status_code == 201
+    r = await _register(client, sample["s1"], sample["off2"])  # overlaps off on MON
+    assert r.status_code == 409
+
+
+async def test_registration_closed_term_is_409(client, sample):
+    r = await _register(client, sample["s1"], sample["off_closed"])
+    assert r.status_code == 409
+
+
+async def test_register_unknown_offering_is_404(client, sample):
+    r = await _register(client, sample["s1"], 999999)
+    assert r.status_code == 404
+
+
+async def test_cancel_frees_seat_and_second_cancel_404(client, sample):
+    reg = await _register(client, sample["s1"], sample["off"])
+    enrollment_id = reg.json()["id"]
+
+    dropped = await client.delete(f"/api/v1/enrollments/{enrollment_id}")
+    assert dropped.status_code == 204
+
+    detail = (await client.get(f"/api/v1/offerings/{sample['off']}")).json()
+    assert detail["available_seats"] == 1  # seat freed
+
+    again = await client.delete(f"/api/v1/enrollments/{enrollment_id}")
+    assert again.status_code == 404  # no longer an active registration
+
+
+async def test_student_enrollments_and_schedule(client, sample):
+    await _register(client, sample["s1"], sample["off"])
+
+    enrollments = (await client.get(f"/api/v1/students/{sample['s1']}/enrollments")).json()
+    assert len(enrollments) == 1
+    assert enrollments[0]["offering"]["course"]["course_code"] == "CS101"
+
+    schedule = (
+        await client.get(f"/api/v1/students/{sample['s1']}/schedule?term_id={sample['term']}")
     ).json()
-
-    payload = {"student_id": student["id"], "course_id": course["id"], "semester": "2025-1"}
-    headers = {"Idempotency-Key": "key-123"}
-
-    first = await client.post("/api/v1/enrollments", json=payload, headers=headers)
-    second = await client.post("/api/v1/enrollments", json=payload, headers=headers)
-
-    assert first.status_code == 201
-    assert second.status_code == 201
-    # Same key -> same resource, not a duplicate row.
-    assert first.json()["id"] == second.json()["id"]
+    assert len(schedule) == 1
+    assert schedule[0]["day_of_week"] == "MON"
 
 
-async def test_duplicate_enrollment_without_key_is_409(client):
-    student = (await _make_student(client)).json()
-    course = (
-        await client.post(
-            "/api/v1/courses",
-            json={"course_code": "CS101", "title": "Intro", "credits": 3},
-        )
-    ).json()
-    payload = {"student_id": student["id"], "course_id": course["id"], "semester": "2025-1"}
-
-    assert (await client.post("/api/v1/enrollments", json=payload)).status_code == 201
-    clash = await client.post("/api/v1/enrollments", json=payload)
-    assert clash.status_code == 409
-
-
-async def test_enroll_missing_course_is_404(client):
-    student = (await _make_student(client)).json()
-    payload = {"student_id": student["id"], "course_id": 4242, "semester": "2025-1"}
-    resp = await client.post("/api/v1/enrollments", json=payload)
-    assert resp.status_code == 404
+async def test_validation_error_is_422_problem(client, sample):
+    r = await client.post("/api/v1/enrollments", json={"student_id": sample["s1"]})
+    assert r.status_code == 422
+    assert r.headers["content-type"].startswith("application/problem+json")

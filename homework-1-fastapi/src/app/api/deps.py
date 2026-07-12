@@ -1,9 +1,9 @@
 """Dependency-injection providers.
 
-Each provider is a small factory FastAPI resolves per request. Because they all
-depend (directly or transitively) on ``get_db``, and FastAPI caches a dependency
-result within a request, every repository/service in one request shares the same
-session — so ``service.create()`` can commit a single transaction.
+Each is a small per-request factory. They all depend (transitively) on
+``get_db``, and FastAPI caches a dependency's result within a request, so every
+repository/service in one request shares the same session — letting a service
+commit a single transaction.
 """
 
 from fastapi import Depends, Query
@@ -13,10 +13,14 @@ from app.db.session import get_db
 from app.repositories.course import CourseRepository
 from app.repositories.enrollment import EnrollmentRepository
 from app.repositories.idempotency import IdempotencyRepository
+from app.repositories.offering import OfferingRepository
 from app.repositories.student import StudentRepository
+from app.repositories.term import TermRepository
 from app.services.course import CourseService
 from app.services.enrollment import EnrollmentService
+from app.services.offering import OfferingService
 from app.services.student import StudentService
+from app.services.term import TermService
 
 
 class Pagination:
@@ -42,6 +46,14 @@ def get_course_repo(db: AsyncSession = Depends(get_db)) -> CourseRepository:
     return CourseRepository(db)
 
 
+def get_term_repo(db: AsyncSession = Depends(get_db)) -> TermRepository:
+    return TermRepository(db)
+
+
+def get_offering_repo(db: AsyncSession = Depends(get_db)) -> OfferingRepository:
+    return OfferingRepository(db)
+
+
 def get_enrollment_repo(db: AsyncSession = Depends(get_db)) -> EnrollmentRepository:
     return EnrollmentRepository(db)
 
@@ -51,25 +63,27 @@ def get_idempotency_repo(db: AsyncSession = Depends(get_db)) -> IdempotencyRepos
 
 
 # --- services -------------------------------------------------------------
-def get_student_service(
-    db: AsyncSession = Depends(get_db),
-    repo: StudentRepository = Depends(get_student_repo),
-) -> StudentService:
-    return StudentService(db, repo)
+def get_student_service(repo: StudentRepository = Depends(get_student_repo)) -> StudentService:
+    return StudentService(repo)
 
 
-def get_course_service(
-    db: AsyncSession = Depends(get_db),
-    repo: CourseRepository = Depends(get_course_repo),
-) -> CourseService:
-    return CourseService(db, repo)
+def get_course_service(repo: CourseRepository = Depends(get_course_repo)) -> CourseService:
+    return CourseService(repo)
+
+
+def get_term_service(repo: TermRepository = Depends(get_term_repo)) -> TermService:
+    return TermService(repo)
+
+
+def get_offering_service(repo: OfferingRepository = Depends(get_offering_repo)) -> OfferingService:
+    return OfferingService(repo)
 
 
 def get_enrollment_service(
     db: AsyncSession = Depends(get_db),
     repo: EnrollmentRepository = Depends(get_enrollment_repo),
     students: StudentRepository = Depends(get_student_repo),
-    courses: CourseRepository = Depends(get_course_repo),
+    offerings: OfferingRepository = Depends(get_offering_repo),
     idempotency: IdempotencyRepository = Depends(get_idempotency_repo),
 ) -> EnrollmentService:
-    return EnrollmentService(db, repo, students, courses, idempotency)
+    return EnrollmentService(db, repo, students, offerings, idempotency)

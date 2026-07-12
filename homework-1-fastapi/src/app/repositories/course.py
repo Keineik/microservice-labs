@@ -11,10 +11,6 @@ class CourseRepository:
     async def get(self, course_id: int) -> Course | None:
         return await self.db.get(Course, course_id)
 
-    async def get_by_code(self, code: str) -> Course | None:
-        res = await self.db.execute(select(Course).where(Course.course_code == code))
-        return res.scalar_one_or_none()
-
     async def list(
         self, *, search: str | None, offset: int, limit: int
     ) -> tuple[list[Course], int]:
@@ -27,14 +23,8 @@ class CourseRepository:
             count_stmt = count_stmt.where(cond)
         total = (await self.db.execute(count_stmt)).scalar_one()
         rows = (
-            (await self.db.execute(stmt.order_by(Course.id).offset(offset).limit(limit)))
+            (await self.db.execute(stmt.order_by(Course.course_code).offset(offset).limit(limit)))
             .scalars()
             .all()
         )
         return list(rows), total
-
-    async def add(self, course: Course) -> Course:
-        self.db.add(course)
-        await self.db.flush()
-        await self.db.refresh(course)
-        return course

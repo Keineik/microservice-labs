@@ -11,6 +11,13 @@ class StudentRepository:
     async def get(self, student_id: int) -> Student | None:
         return await self.db.get(Student, student_id)
 
+    async def get_for_update(self, student_id: int) -> Student | None:
+        """Fetch the student row with a FOR UPDATE lock — serializes one
+        student's concurrent registrations (no-op on SQLite)."""
+        return (
+            await self.db.execute(select(Student).where(Student.id == student_id).with_for_update())
+        ).scalar_one_or_none()
+
     async def get_by_code(self, code: str) -> Student | None:
         res = await self.db.execute(select(Student).where(Student.student_code == code))
         return res.scalar_one_or_none()

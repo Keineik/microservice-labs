@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.routes import courses, enrollments, students
+from app.api.v1.routes import courses, enrollments, offerings, students, terms
 
 # The v1 aggregate router. main.py mounts this under settings.api_v1_prefix
 # (/api/v1). A future v2 would be a sibling package mounted under /api/v2 —
@@ -8,4 +8,6 @@ from app.api.v1.routes import courses, enrollments, students
 api_router = APIRouter()
 api_router.include_router(students.router)
 api_router.include_router(courses.router)
+api_router.include_router(terms.router)
+api_router.include_router(offerings.router)
 api_router.include_router(enrollments.router)

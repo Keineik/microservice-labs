@@ -1,22 +1,20 @@
-from datetime import datetime
-from enum import Enum
+from datetime import datetime, time
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.course import CourseOut
-from app.schemas.student import StudentOut
+from app.schemas.offering import OfferingSummary
 
 
-class EnrollmentStatus(str, Enum):
-    ENROLLED = "ENROLLED"
+class EnrollmentStatus(StrEnum):
+    REGISTERED = "REGISTERED"
     DROPPED = "DROPPED"
     COMPLETED = "COMPLETED"
 
 
 class EnrollmentCreate(BaseModel):
     student_id: int = Field(examples=[1])
-    course_id: int = Field(examples=[1])
-    semester: str = Field(max_length=20, examples=["2025-1"])
+    offering_id: int = Field(examples=[1])
 
 
 class EnrollmentOut(BaseModel):
@@ -24,21 +22,28 @@ class EnrollmentOut(BaseModel):
 
     id: int
     student_id: int
-    course_id: int
-    semester: str
+    offering_id: int
     status: EnrollmentStatus
     grade: float | None
-    enrolled_at: datetime
+    registered_at: datetime
 
 
-class EnrollmentWithCourse(EnrollmentOut):
-    """An enrollment plus its course — used for a student's enrollment list."""
+class EnrollmentWithOffering(EnrollmentOut):
+    """An enrollment with its offering (course + term + schedule) embedded —
+    used for a student's transcript / current-registration lists."""
 
-    course: CourseOut
+    offering: OfferingSummary
 
 
-class EnrollmentDetail(EnrollmentOut):
-    """Full detail: the enrollment with both related entities embedded."""
+class ScheduleItem(BaseModel):
+    """One meeting in a student's weekly schedule for a term."""
 
-    student: StudentOut
-    course: CourseOut
+    enrollment_id: int
+    course_code: str
+    course_title: str
+    section_no: str
+    instructor: str | None
+    day_of_week: str
+    start_time: time
+    end_time: time
+    room: str | None

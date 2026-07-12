@@ -100,7 +100,11 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def _handle_http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-        phrase = HTTPStatus(exc.status_code).phrase if exc.status_code in HTTPStatus._value2member_map_ else "Error"
+        phrase = (
+            HTTPStatus(exc.status_code).phrase
+            if exc.status_code in HTTPStatus._value2member_map_
+            else "Error"
+        )
         return _problem(request, exc.status_code, title=phrase, detail=str(exc.detail))
 
     @app.exception_handler(Exception)

@@ -41,11 +41,11 @@ up: ## Build + start api and postgres (migrations run on api startup)
 
 .PHONY: down
 down: ## Stop the stack (keep the postgres volume)
-	$(COMPOSE) down
+	$(COMPOSE) --profile load down --remove-orphans
 
 .PHONY: clean
 clean: ## Stop the stack and delete the postgres volume
-	$(COMPOSE) down -v
+	$(COMPOSE) --profile load down -v --remove-orphans
 
 .PHONY: logs
 logs: ## Tail api logs

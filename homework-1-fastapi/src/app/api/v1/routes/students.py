@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import Pagination, get_student_service
 from app.schemas.common import Page, Problem
-from app.schemas.student import StudentCreate, StudentOut
+from app.schemas.student import StudentOut
 from app.services.student import StudentService
 
 router = APIRouter(prefix="/students", tags=["students"])
@@ -35,16 +35,3 @@ async def get_student(
     student_id: int, service: StudentService = Depends(get_student_service)
 ) -> StudentOut:
     return StudentOut.model_validate(await service.get(student_id))
-
-
-@router.post(
-    "",
-    response_model=StudentOut,
-    status_code=status.HTTP_201_CREATED,
-    responses={409: {"model": Problem}, 422: {"model": Problem}},
-    summary="Create a student",
-)
-async def create_student(
-    payload: StudentCreate, service: StudentService = Depends(get_student_service)
-) -> StudentOut:
-    return StudentOut.model_validate(await service.create(payload))

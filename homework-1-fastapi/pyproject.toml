@@ -43,6 +43,18 @@ src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# Keep the explicit Generic[T] form for the Pydantic generic (PEP 695 generics
+# on Pydantic models are avoided here).
+ignore = ["UP046"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection idiom relies on calls in argument defaults.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Header",
+    "fastapi.Path",
+]
 
 [tool.mypy]
 python_version = "3.12"
