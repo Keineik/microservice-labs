@@ -68,6 +68,28 @@ and contract are unaffected.
   only to warn *before* submitting; the API remains the source of truth and still
   returns a 409 on a real clash.
 
+## API versioning (BT2 requirement)
+
+Versioning is **path-based**: routers are mounted under `/api/v1` and `/api/v2`
+as siblings (`app/main.py`), so both versions are served **simultaneously**.
+
+To make versioning *demonstrable* (not just a prefix), `/api/v2/students`
+intentionally makes a **breaking** contract change vs `/api/v1/students`:
+
+| | v1 (`StudentOut`) | v2 (`StudentOutV2`) |
+|---|---|---|
+| identifier | `student_code` | `code` |
+| name | `full_name` | `name` |
+| audit fields | `created_at`, `updated_at` | *(dropped)* |
+
+The point: you can't rename fields in v1 without breaking existing clients, so
+the new contract ships as **v2** while v1 keeps working. Both versions call the
+**same** `StudentService`/`StudentRepository` — versioning is a *presentation*
+concern, and business logic is reused, not forked (`app/api/v2/routes/students.py`
+just maps the ORM model to the new shape). Only `students` is re-versioned, as a
+focused demonstration; a real migration would version every resource (or default
+unchanged ones to their v1 shape).
+
 ## Scope & assumptions (please note)
 
 - **No authentication yet.** Auth/authorization is intentionally out of scope for

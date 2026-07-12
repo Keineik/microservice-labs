@@ -96,7 +96,15 @@ Run just the web client locally (against an API already on `:8000`): `make web`.
 - **REST Level 2** — correct verbs + status codes.
 - **RFC 7807** — `app/core/problems.py`.
 - **Idempotency** — `Idempotency-Key` on register (`app/services/enrollment.py`).
-- **API versioning** — path-based under `/api/v1`.
+- **API versioning** — path-based: `/api/v1` and `/api/v2` served side by side.
+  `/api/v2/students` ships a **breaking** contract change (`student_code`→`code`,
+  `full_name`→`name`, timestamps dropped) while v1 stays unchanged — demonstrating
+  non-breaking evolution. Both reuse the same service/repo layer. **Demo:**
+  ```bash
+  curl -s localhost:8000/api/v1/students/1   # {"student_code":"SV00001","full_name":"…", "created_at":…}
+  curl -s localhost:8000/api/v2/students/1   # {"code":"SV00001","name":"…"}  (no timestamps)
+  ```
+  Both also appear in `/docs`, tagged `students` and `students (v2)`.
 - **Registration transaction** — row lock + capacity + window + clash checks; see [docs/design_notes.md](docs/design_notes.md).
 
 ## Local dev / tests (needs `uv`)

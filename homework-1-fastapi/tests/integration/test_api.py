@@ -97,3 +97,24 @@ async def test_validation_error_is_422_problem(client, sample):
     r = await client.post("/api/v1/enrollments", json={"student_id": sample["s1"]})
     assert r.status_code == 422
     assert r.headers["content-type"].startswith("application/problem+json")
+
+
+async def test_api_versioning_v1_and_v2_coexist(client, sample):
+    """Path-based versioning: v1 and v2 serve the same student from the same
+    data with different contracts, simultaneously."""
+    sid = sample["s1"]
+
+    v1 = (await client.get(f"/api/v1/students/{sid}")).json()
+    v2 = (await client.get(f"/api/v2/students/{sid}")).json()
+
+    # v1 keeps the original contract (with internal timestamps).
+    assert v1["student_code"] == "SV1"
+    assert v1["full_name"] == "Alice"
+    assert "created_at" in v1
+
+    # v2 is the renamed, slimmer contract over the same underlying record.
+    assert v2["code"] == "SV1"
+    assert v2["name"] == "Alice"
+    assert "student_code" not in v2 and "full_name" not in v2
+    assert "created_at" not in v2
+    assert v1["id"] == v2["id"]

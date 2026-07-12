@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
     api_v1_prefix: str = "/api/v1"
+    api_v2_prefix: str = "/api/v2"
 
     app_name: str = "Enrollment API"
     app_version: str = "0.1.0"

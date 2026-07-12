@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
-from app.api.v1.router import api_router
+from app.api.v1.router import api_router as api_router_v1
+from app.api.v2.router import api_router as api_router_v2
 from app.core.config import get_settings
 from app.core.logging import setup_logging
 from app.core.problems import register_exception_handlers
@@ -24,7 +25,11 @@ def create_app() -> FastAPI:
     )
 
     register_exception_handlers(app)
-    app.include_router(api_router, prefix=settings.api_v1_prefix)
+    # Path-based API versioning: v1 and v2 are siblings mounted under different
+    # prefixes and served simultaneously, so old clients keep working while new
+    # clients adopt the v2 contract.
+    app.include_router(api_router_v1, prefix=settings.api_v1_prefix)
+    app.include_router(api_router_v2, prefix=settings.api_v2_prefix)
 
     @app.get("/health", tags=["meta"], summary="Liveness probe")
     async def health() -> dict[str, str]:
