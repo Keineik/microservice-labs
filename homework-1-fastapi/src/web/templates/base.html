@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}UniReg{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><a href="/">🎓 UniReg</a></div>
+    <nav class="mainnav">
+      <a href="/" class="{{ 'on' if active == 'dashboard' else '' }}">Dashboard</a>
+      <a href="/register" class="{{ 'on' if active == 'register' else '' }}">Register</a>
+      <a href="/transcript" class="{{ 'on' if active == 'transcript' else '' }}">My Courses</a>
+      <a href="/schedule" class="{{ 'on' if active == 'schedule' else '' }}">Schedule</a>
+    </nav>
+    <details class="profile">
+      <summary>
+        <span class="avatar">{{ student.full_name[0] | upper }}</span>
+        <span class="who">
+          <strong>{{ student.full_name }}</strong>
+          <small>{{ student.student_code }}</small>
+        </span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="menu">
+        <p class="menu-title">Switch student <span>(login is out of scope — this simulates a session)</span></p>
+        <input type="search" name="q" placeholder="Search name or code…" autocomplete="off"
+               hx-get="/students/search"
+               hx-trigger="keyup changed delay:300ms, load"
+               hx-target="#switch-results">
+        <div id="switch-results"></div>
+      </div>
+    </details>
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

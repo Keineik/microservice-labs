@@ -15,6 +15,10 @@ install: ## Create venv and install project + dev deps via uv
 dev: ## Run the API locally with autoreload (expects a reachable Postgres)
 	uv run uvicorn app.main:app --reload --app-dir src
 
+.PHONY: web
+web: ## Run the BT3 web client locally (expects the API on :8000)
+	uv run --extra web uvicorn web.main:app --reload --app-dir src --port 8001
+
 .PHONY: test
 test: ## Run the test suite (uses in-memory SQLite, no Postgres needed)
 	uv run --extra dev pytest -q
@@ -36,8 +40,10 @@ migration: ## Autogenerate a new Alembic migration: make migration m="message"
 
 # ---- Docker Compose stack ------------------------------------------------
 .PHONY: up
-up: ## Build + start api and postgres (migrations run on api startup)
-	$(COMPOSE) up --build -d api postgres
+up: ## Build + start postgres, api, and the web client (migrations run on api startup)
+	$(COMPOSE) up --build -d api web postgres
+	@echo "API:  http://localhost:8000/docs"
+	@echo "Web:  http://localhost:8001  (run 'make seed' first if the DB is empty)"
 
 .PHONY: down
 down: ## Stop the stack (keep the postgres volume)
@@ -52,7 +58,7 @@ logs: ## Tail api logs
 	$(COMPOSE) logs -f api
 
 .PHONY: seed
-seed: ## Seed the database (150 students, 100 courses, ~400 enrollments)
+seed: ## Seed the database (150 students, 100 courses, 3 terms, ~1600 enrollments)
 	$(COMPOSE) exec api python scripts/seed_data.py
 
 .PHONY: migrate

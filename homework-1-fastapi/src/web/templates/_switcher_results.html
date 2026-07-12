@@ -1,0 +1,14 @@
+{% if students %}
+<ul class="switch-list">
+  {% for s in students %}
+  <li>
+    <a href="/switch/{{ s.id }}?next={{ next_path|urlencode }}">
+      <span class="avatar sm">{{ s.full_name[0] | upper }}</span>
+      <span class="who"><strong>{{ s.full_name }}</strong><small>{{ s.student_code }} · {{ s.major or '—' }}</small></span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">No students found.</p>
+{% endif %}

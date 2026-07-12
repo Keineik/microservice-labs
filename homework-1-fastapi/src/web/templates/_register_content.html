@@ -1,0 +1,96 @@
+{# HTMX-swappable region: filter bar + my-selections cart + offerings table + pager.
+   Register/drop/search/toggle/paginate all re-render this whole partial.
+   State (search/open_only/page) is embedded in each control's URL so the
+   re-render lands on the same view. #}
+{% set qs = search|urlencode %}
+{% set oo = 'true' if open_only else 'false' %}
+
+{% if flash %}<div class="flash {{ flash.type }}">{{ flash.message }}</div>{% endif %}
+
+{% if not term %}
+  <div class="card"><p class="empty">No term is currently open for registration.</p></div>
+{% else %}
+<div class="reg-layout">
+  <section class="browse card">
+    <div class="filterbar">
+      <input id="offering-search" class="search" type="search" name="search" value="{{ search }}"
+             placeholder="Search course code or title…"
+             hx-get="/register/content" hx-trigger="keyup changed delay:400ms, search"
+             hx-include="#open-only" hx-target="#register-content" hx-swap="innerHTML">
+      <select id="open-only" name="open_only"
+              hx-get="/register/content" hx-trigger="change"
+              hx-include="#offering-search" hx-target="#register-content" hx-swap="innerHTML">
+        <option value="true" {{ 'selected' if open_only else '' }}>Open sections only</option>
+        <option value="false" {{ 'selected' if not open_only else '' }}>All sections</option>
+      </select>
+      <span class="count">{{ total }} section{{ '' if total == 1 else 's' }}</span>
+    </div>
+
+    {% if not term_open %}
+    <div class="flash warn">Registration for {{ term.name }} is closed — you can browse but not register.</div>
+    {% endif %}
+
+    <table class="offerings">
+      <thead><tr><th>Course</th><th>Schedule</th><th>Instructor</th><th>Seats</th><th></th></tr></thead>
+      <tbody>
+      {% for row in offerings %}
+        {% set o = row.offering %}
+        <tr class="{{ 'is-reg' if row.enrollment else '' }}">
+          <td>
+            <strong>{{ o.course.course_code }}</strong> — {{ o.course.title }}
+            <div class="sub">§{{ o.section_no }} · {{ o.course.credits }} cr{% if o.status != 'OPEN' %} · <span class="badge closed">{{ o.status }}</span>{% endif %}</div>
+          </td>
+          <td>{{ o.day_of_week|day }}<br><small>{{ o.start_time|hhmm }}–{{ o.end_time|hhmm }}{% if o.room %} · {{ o.room }}{% endif %}</small></td>
+          <td>{{ o.instructor or '—' }}</td>
+          <td>{% if row.is_full %}<span class="badge full">Full</span>{% else %}{{ o.available_seats }}/{{ o.capacity }}{% endif %}</td>
+          <td class="action">
+            {% if row.enrollment %}
+              <span class="badge reg">Registered</span>
+              <button class="btn danger sm" hx-post="/drop/{{ row.enrollment.id }}?search={{ qs }}&open_only={{ oo }}&page={{ page }}" hx-target="#register-content" hx-swap="innerHTML">Drop</button>
+            {% elif not term_open or o.status != 'OPEN' or row.is_full %}
+              <button class="btn sm" disabled>Register</button>
+            {% else %}
+              {% if row.clash %}<div class="clash" title="Overlaps {{ row.clash.course.course_code }} on {{ row.clash.day_of_week|day }}">⚠ clashes with {{ row.clash.course.course_code }}</div>{% endif %}
+              <button class="btn primary sm" hx-post="/register/{{ o.id }}?search={{ qs }}&open_only={{ oo }}&page={{ page }}" hx-target="#register-content" hx-swap="innerHTML">Register</button>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="empty">No sections match your search.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    {% if pages > 1 %}
+    <div class="pager">
+      <button class="btn ghost sm" {{ 'disabled' if page <= 1 else '' }}
+        hx-get="/register/content?search={{ qs }}&open_only={{ oo }}&page={{ page - 1 }}" hx-target="#register-content" hx-swap="innerHTML">← Prev</button>
+      <span>Page {{ page }} of {{ pages }}</span>
+      <button class="btn ghost sm" {{ 'disabled' if page >= pages else '' }}
+        hx-get="/register/content?search={{ qs }}&open_only={{ oo }}&page={{ page + 1 }}" hx-target="#register-content" hx-swap="innerHTML">Next →</button>
+    </div>
+    {% endif %}
+  </section>
+
+  <aside class="cart card">
+    <h3>My selections</h3>
+    <p class="muted">{{ term.code }}</p>
+    <p class="credits"><strong>{{ selected_credits }}</strong> credit{{ '' if selected_credits == 1 else 's' }} · {{ registrations|length }} course{{ '' if registrations|length == 1 else 's' }}</p>
+    {% if registrations %}
+    <ul class="cartlist">
+      {% for r in registrations %}
+      <li>
+        <div>
+          <strong>{{ r.offering.course.course_code }}</strong>
+          <small>{{ r.offering.day_of_week|day }} {{ r.offering.start_time|hhmm }} · {{ r.offering.course.credits }} cr</small>
+        </div>
+        <button class="btn danger xs" title="Drop" hx-post="/drop/{{ r.id }}?search={{ qs }}&open_only={{ oo }}&page={{ page }}" hx-target="#register-content" hx-swap="innerHTML">✕</button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">Nothing registered yet.</p>
+    {% endif %}
+  </aside>
+</div>
+{% endif %}

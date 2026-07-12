@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · UniReg{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Welcome, {{ student.full_name.split(' ')[0] }}</h1>
+  <p class="muted">{{ student.student_code }} · {{ student.major or 'Undeclared' }} · Enrolled {{ student.enrollment_year or '—' }}</p>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <span class="num">{{ '%.2f'|format(gpa) if gpa is not none else '—' }}</span>
+    <span class="lbl">Cumulative GPA <small>(0–10)</small></span>
+  </div>
+  <div class="stat"><span class="num">{{ credits_earned }}</span><span class="lbl">Credits earned</span></div>
+  <div class="stat"><span class="num">{{ credits_in_progress }}</span><span class="lbl">Credits in progress</span></div>
+  <div class="stat"><span class="num">{{ completed_count }}</span><span class="lbl">Courses completed</span></div>
+</div>
+
+{% if term %}
+<div class="card reg-banner {{ 'open' if term.is_registration_open else 'closed' }}">
+  <div>
+    <h2>{{ term.name }}</h2>
+    {% if term.is_registration_open %}
+      <p>Registration is <strong>open</strong>{% if days_left is not none and days_left >= 0 %} — closes in {{ days_left }} day{{ '' if days_left == 1 else 's' }}{% endif %}.</p>
+    {% else %}
+      <p>Registration is <strong>closed</strong> for this term.</p>
+    {% endif %}
+  </div>
+  {% if term.is_registration_open %}<a class="btn primary" href="/register">Register for courses →</a>{% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head">
+    <h2>Current registrations</h2>
+    <a href="/schedule" class="link">View weekly schedule →</a>
+  </div>
+  {% if current %}
+  <table class="offerings">
+    <thead><tr><th>Course</th><th>Schedule</th><th>Term</th></tr></thead>
+    <tbody>
+    {% for e in current %}
+      <tr>
+        <td>
+          <strong>{{ e.offering.course.course_code }}</strong> — {{ e.offering.course.title }}
+          <div class="sub">§{{ e.offering.section_no }} · {{ e.offering.course.credits }} cr</div>
+        </td>
+        <td>{{ e.offering.day_of_week|day }}<br><small>{{ e.offering.start_time|hhmm }}–{{ e.offering.end_time|hhmm }}{% if e.offering.room %} · {{ e.offering.room }}{% endif %}</small></td>
+        <td>{{ e.offering.term.code }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No current registrations.{% if term and term.is_registration_open %} <a href="/register">Register now →</a>{% endif %}</p>
+  {% endif %}
+</div>
+{% endblock %}

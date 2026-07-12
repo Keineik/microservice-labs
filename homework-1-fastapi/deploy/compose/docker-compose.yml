@@ -22,6 +22,8 @@ services:
       # Build context is the project root (homework-1-fastapi/).
       context: ../..
       dockerfile: deploy/docker/Dockerfile
+    # Named so the web service can reuse the same image (built once).
+    image: enrollment-api:latest
     environment:
       APP_DATABASE_URL: postgresql+asyncpg://app:app@postgres:5432/enrollment
       APP_LOG_LEVEL: INFO
@@ -35,6 +37,29 @@ services:
       - "8000:8000"
     depends_on:
       postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # BT3 web client — server-rendered Jinja2 + HTMX. Separate service that
+  # consumes the API over HTTP (no DB). Reuses the API image; overrides the
+  # entrypoint to run web.main instead of app.main (and skips migrations).
+  web:
+    image: enrollment-api:latest
+    environment:
+      WEB_API_BASE_URL: http://api:8000/api/v1
+    entrypoint:
+      ["uvicorn", "web.main:app", "--host", "0.0.0.0", "--port", "8001",
+       "--reload", "--reload-dir", "/app/src"]
+    volumes:
+      - ../../src:/app/src
+    ports:
+      - "8001:8001"
+    depends_on:
+      api:
         condition: service_healthy
 
   # Load-testing service — only started with the "load" profile (`make load`).

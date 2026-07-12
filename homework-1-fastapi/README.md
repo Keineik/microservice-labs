@@ -32,10 +32,11 @@ and there's no schedule clash.
 ## Run it (Docker Compose)
 
 ```bash
-make up      # build + start api and postgres; migrations run on startup
+make up      # build + start postgres, api, and the web client; migrations run on startup
 make seed    # 150 students, 100 courses, 3 terms, 150 offerings, ~1.6k enrollments
 ```
-Swagger UI → http://localhost:8000/docs · health → `/health`
+API Swagger UI → http://localhost:8000/docs · health → `/health`
+**Web app (BT3)** → http://localhost:8001 (run `make seed` first if the DB is empty)
 
 ```bash
 make logs · make psql · make down (keep data) · make clean (drop volume) · make load
@@ -63,6 +64,29 @@ make logs · make psql · make down (keep data) · make clean (drop volume) · m
 
 Status codes: 201 register · 204 cancel · 404 missing · 409 (full / duplicate /
 closed / schedule clash) · 422 validation. Errors are RFC 7807 `problem+json`.
+
+## Web client (BT3) — `src/web/`
+
+A **server-rendered** UI (Jinja2 + [HTMX](https://htmx.org/)) that lets a student
+browse offerings, register/cancel, and view their transcript and weekly schedule.
+It is a **separate FastAPI service** that consumes the JSON API over HTTP
+(`httpx`) — it never touches the database. This keeps a clean browser → web/BFF →
+API → DB split (fitting for the distributed-systems course) and leaves the JSON
+API untouched. Nearly zero hand-written JS: HTMX swaps HTML fragments for search,
+pagination, register, and drop.
+
+| Screen | Route | What it shows |
+|---|---|---|
+| Dashboard | `/` | cumulative GPA, credits earned / in progress, registration-window status, current registrations |
+| Register | `/register` | browse the open term's offerings (server-side search + pagination), a "my selections" cart, register/drop with live seat/credit updates and clash warnings |
+| My Courses | `/transcript` | past courses grouped by term with grades + per-term & cumulative GPA; term filter |
+| Schedule | `/schedule` | weekly timetable grid of the current term's registered classes |
+
+> **Login is out of scope** (same note as the API). "Who is logged in" is
+> simulated by the **profile switcher** (top-right) — search any student and
+> switch; the choice is kept in a cookie. See [docs/design_notes.md](docs/design_notes.md).
+
+Run just the web client locally (against an API already on `:8000`): `make web`.
 
 ## How each requirement is met
 

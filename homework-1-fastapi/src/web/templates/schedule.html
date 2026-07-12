@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Schedule · UniReg{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Weekly Schedule</h1>
+  {% if term %}<p class="muted">{{ term.name }} · {{ items|length }} class{{ '' if items|length == 1 else 'es' }} registered</p>{% endif %}
+</div>
+
+{% if items %}
+<div class="timetable card">
+  <table>
+    <thead>
+      <tr><th class="time-col"></th>{% for d in days %}<th>{{ d|day }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+    {% for slot in slots %}
+      <tr>
+        <th class="time-col">{{ slot|hhmm }}</th>
+        {% for d in days %}
+          {% set cls = grid.get((d, slot)) %}
+          <td>
+            {% if cls %}
+            <div class="class-block">
+              <strong>{{ cls.course_code }}</strong>
+              <span>{{ cls.course_title }}</span>
+              <small>{{ cls.start_time|hhmm }}–{{ cls.end_time|hhmm }}{% if cls.room %} · {{ cls.room }}{% endif %}</small>
+            </div>
+            {% endif %}
+          </td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card"><p class="empty">No registered classes{% if term %} for {{ term.name }}{% endif %}. <a href="/register">Register for courses →</a></p></div>
+{% endif %}
+{% endblock %}

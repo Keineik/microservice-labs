@@ -1,0 +1,23 @@
+{% for g in term_groups %}
+<div class="card">
+  <div class="card-head">
+    <h2>{{ g.term.name }} <small class="muted">{{ g.term.code }}</small></h2>
+    <div class="term-meta">Term GPA <strong>{{ '%.2f'|format(g.gpa) if g.gpa is not none else '—' }}</strong> · {{ g.credits }} credits</div>
+  </div>
+  <table class="offerings">
+    <thead><tr><th>Course</th><th>Section</th><th>Credits</th><th>Grade</th></tr></thead>
+    <tbody>
+    {% for e in g.rows %}
+      <tr>
+        <td><strong>{{ e.offering.course.course_code }}</strong> — {{ e.offering.course.title }}</td>
+        <td>§{{ e.offering.section_no }}</td>
+        <td>{{ e.offering.course.credits }}</td>
+        <td>{% if e.grade is not none %}<span class="grade {{ 'pass' if e.grade >= 4 else 'fail' }}">{{ '%.1f'|format(e.grade) }}</span>{% else %}—{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card"><p class="empty">No completed courses to show.</p></div>
+{% endfor %}

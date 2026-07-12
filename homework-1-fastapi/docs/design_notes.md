@@ -37,6 +37,37 @@ term.
 `DELETE /enrollments/{id}` cancels (soft `DROPPED`) — allowed only while the
 term's registration window is still open, which frees the seat.
 
+## BT3 web client (`src/web/`)
+
+The web app is a **separate FastAPI service** that renders HTML with Jinja2 +
+HTMX and talks to the JSON API over HTTP (`httpx`). It has **no database access**
+of its own. The request path is `browser → web (BFF) → API → DB`, which is a
+deliberate, honest client/server split for the distributed-systems course rather
+than folding the UI into the API process. The JSON API is unchanged, so its tests
+and contract are unaffected.
+
+- **Server-rendered + HTMX, minimal JS.** Search, pagination, register, and drop
+  are HTMX requests that swap an HTML fragment; there is essentially no
+  hand-written JavaScript and no front-end build step.
+- **Login simulation.** Consistent with "no auth yet", the acting student is held
+  in a cookie and chosen via the top-right **profile switcher** (searchable). This
+  stands in for a login/session — a real system would derive the student from the
+  authenticated principal and authorize every call.
+- **Derived academic figures (GPA, credits).** Cumulative/per-term GPA
+  (credit-weighted, 0–10 scale) and credit totals are computed in the web layer
+  (`src/web/academics.py`) from the enrollment records the API returns. This is a
+  presentation-time aggregation; a production system would more likely expose a
+  `GET /students/{id}/academic-summary` endpoint so that domain logic lives in the
+  API service. Kept web-side here to leave the API surface untouched.
+- **Filter placement.** Offering search/pagination are **server-side** (the API
+  already does `ilike` + paging, and a term can have many sections). The transcript
+  term filter is also routed through the API for consistency, though a single
+  student's enrollment set is small enough that client-side filtering would work
+  too.
+- **Schedule-clash warnings** are recomputed in the UI (mirroring the server rule)
+  only to warn *before* submitting; the API remains the source of truth and still
+  returns a 409 on a real clash.
+
 ## Scope & assumptions (please note)
 
 - **No authentication yet.** Auth/authorization is intentionally out of scope for

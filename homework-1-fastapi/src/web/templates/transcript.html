@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}My Courses · UniReg{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>My Courses</h1>
+  <p class="muted">{{ student.full_name }} · {{ student.student_code }}</p>
+</div>
+
+<div class="stats">
+  <div class="stat"><span class="num">{{ '%.2f'|format(gpa) if gpa is not none else '—' }}</span><span class="lbl">Cumulative GPA <small>(0–10)</small></span></div>
+  <div class="stat"><span class="num">{{ credits_earned }}</span><span class="lbl">Credits earned</span></div>
+  <div class="stat"><span class="num">{{ credits_in_progress }}</span><span class="lbl">Credits in progress</span></div>
+</div>
+
+<div class="filterbar standalone">
+  <label for="term-filter">Filter by term</label>
+  <select id="term-filter" name="term_id"
+          hx-get="/transcript/list" hx-trigger="change"
+          hx-target="#transcript-terms" hx-swap="innerHTML">
+    <option value="">All terms</option>
+    {% for t in all_terms %}
+    <option value="{{ t.id }}" {{ 'selected' if selected_term_id == t.id else '' }}>{{ t.name }} ({{ t.code }})</option>
+    {% endfor %}
+  </select>
+</div>
+
+<div id="transcript-terms">
+  {% include "_transcript_list.html" %}
+</div>
+{% endblock %}

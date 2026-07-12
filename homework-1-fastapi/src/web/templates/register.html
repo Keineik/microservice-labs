@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Register · UniReg{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Course Registration</h1>
+  {% if term %}<p class="muted">{{ term.name }} · registration {{ 'open' if term_open else 'closed' }}</p>{% endif %}
+</div>
+
+<div id="register-content">
+  {% include "_register_content.html" %}
+</div>
+{% endblock %}
