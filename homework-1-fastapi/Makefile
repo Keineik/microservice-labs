@@ -73,3 +73,29 @@ load: ## Start Locust (web UI at http://localhost:8089)
 .PHONY: psql
 psql: ## Open a psql shell into the postgres container
 	$(COMPOSE) exec postgres psql -U app -d enrollment
+
+# ---- Report (Markdown -> PDF via Pandoc + Typst) -------------------------
+# Explicit, ordered source list (filename order = document order).
+REPORT_SRCS := report/00-metadata.md report/01-bai-tap-1.md \
+               report/02-bai-tap-2.md report/03-bai-tap-3.md \
+               report/04-tu-danh-gia.md
+# Mermaid diagrams render only if mermaid-filter is installed (npm i -g mermaid-filter);
+# otherwise the build still succeeds and diagrams appear as code blocks.
+MERMAID_FILTER := $(shell command -v mermaid-filter 2>/dev/null)
+
+.PHONY: report
+report: ## Build report/report.pdf (needs: brew install pandoc typst; diagrams: npm i -g mermaid-filter)
+	@command -v pandoc >/dev/null || { echo "pandoc not found -> brew install pandoc typst"; exit 1; }
+	@command -v typst  >/dev/null || { echo "typst not found  -> brew install typst"; exit 1; }
+ifeq ($(MERMAID_FILTER),)
+	@echo "note: mermaid-filter not found -> diagrams render as code. Install: npm i -g mermaid-filter"
+	pandoc $(REPORT_SRCS) \
+		--pdf-engine=typst --toc --number-sections \
+		--resource-path=report -o report/report.pdf
+else
+	MERMAID_FILTER_FORMAT=svg pandoc $(REPORT_SRCS) \
+		--filter mermaid-filter \
+		--pdf-engine=typst --toc --number-sections \
+		--resource-path=report -o report/report.pdf
+endif
+	@echo "Wrote report/report.pdf"
