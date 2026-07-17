@@ -1,71 +1,100 @@
 # Bài tập 1
 
-Bài tập 1 đo hiệu năng của Web API ở các kịch bản truy xuất cơ sở dữ liệu
-(search / read) dưới tải, dùng Locust.
+Bài tập 1 so sánh hiệu năng giữa **sync** (Flask, WSGI) và **async** (FastAPI,
+ASGI) trên các truy vấn đọc chạm cơ sở dữ liệu, và dùng Locust để chứng minh
+tác động của concurrency model tới throughput và latency.
 
-## Thiết lập
+## Thiết kế thí nghiệm
 
-Kịch bản load test nằm trong `load/locustfile.py`. Mỗi user ảo lặp lại một tập
-các request read với `wait_time` ngẫu nhiên 0.5 tới 2.0 giây giữa hai lần, mô
-phỏng người dùng duyệt trang. Trọng số (task weight) phản ánh tần suất thực tế:
+Để cô lập đúng biến "sync so với async", chúng tôi dựng **hai app tối thiểu song
+song** trong thư mục `benchmark/`, expose cùng các endpoint:
 
-- `GET /offerings?term_id=&page=1&size=20` (duyệt offering của học kỳ) - trọng số 3.
-- `GET /offerings?search=a` (tìm kiếm theo title / code) - trọng số 2.
-- `GET /offerings/{id}` (chi tiết một offering) - trọng số 2.
-- `GET /students/{id}/enrollments` (transcript của một student) - trọng số 3.
-- `GET /students/{id}/schedule?term_id=` (thời khóa biểu) - trọng số 1.
-- `GET /courses?page=1&size=20` (danh sách course) - trọng số 1.
+- **async**: FastAPI + async SQLAlchemy + asyncpg, chạy bằng uvicorn (một event
+  loop).
+- **sync**: Flask + sync SQLAlchemy + psycopg2, chạy bằng gunicorn sync worker.
 
-Các endpoint này được chọn vì đều chạm database và có độ nặng khác nhau: từ tra
-cứu theo khóa chính (`/offerings/{id}`) tới truy vấn có join và đếm
-(`/offerings` phải đếm số enrollment đang active để tính `available_seats`).
+Cả hai import chung `bench_common.py` (cùng câu lệnh SQL và cùng cách
+serialization), nên payload giống hệt nhau. Những thứ được **giữ cố định** để so
+sánh công bằng:
 
-Chạy headless để lấy số liệu:
+- Cùng PostgreSQL, cùng dữ liệu seed, cùng SQL, cùng index.
+- Cùng connection pool size (mặc định 10, `max_overflow=0`) ở cả hai app.
+- Cùng payload JSON (chung serializer).
+- Cùng máy; warm up trước khi đo; chạy lặp lại vài lần.
+
+Chỉ có **concurrency model** thay đổi.
+
+Ghi chú về ORM: **SQLAlchemy mặc định là sync**, phần async là tùy chọn và cần
+async driver (asyncpg). Dùng async SQLAlchemy bên trong Flask cũng không giúp
+được, vì Flask (WSGI) vẫn xử lý blocking từng request trên mỗi worker; không có
+event loop dùng chung. Vì vậy contender sync đúng nghĩa là Flask + psycopg2, còn
+contender async là FastAPI + asyncpg.
+
+## Kịch bản và cách chạy
+
+Hai loại kịch bản (chọn bằng tag của Locust):
+
+- **read**: các endpoint đọc thật (browse/search offering, chi tiết offering,
+  transcript của student, danh sách course). Truy vấn nhanh (sub-millisecond).
+- **io**: endpoint `/io` chạy `SELECT pg_sleep(...)` với thời gian mặc định
+  **300 ms** (chỉnh qua `BENCH_IO_SECONDS` hoặc `?seconds=`). Kịch bản này cố ý
+  làm request bị chờ ở DB để cô lập và phóng đại hiệu ứng sync/async.
+
+Ma trận đo: `async-1w` (một tiến trình) so với `sync-1w` (một worker) và
+`sync-4w` (bốn worker); mỗi cấu hình chạy cả `read` và `io`. Locust dùng
+`-u 100 -r 20 -t 60s`, `wait_time = 0` (mỗi user gửi liên tục để đo throughput
+ở trạng thái bão hòa).
+
+Cách chạy (chi tiết ở `benchmark/README.md`):
 
 ```bash
-make up && make seed   # API tại :8000, dữ liệu seed sẵn
-locust -f load/locustfile.py --host http://localhost:8000 \
-       --users 50 --spawn-rate 10 --run-time 1m --headless
+uv sync --extra bench           # flask, gunicorn, psycopg2, locust
+make bench-async                # FastAPI (async) :9001
+make bench-sync                 # Flask (sync), 1 worker :9002
+make bench-load HOST=http://localhost:9001 NAME=async-io   TAGS=io USERS=100 TIME=60s
+make bench-load HOST=http://localhost:9002 NAME=sync-1w-io TAGS=io USERS=100 TIME=60s
 ```
-
-Thông số lần chạy: <!-- TODO: số users, spawn-rate, thời lượng, cấu hình máy -->
 
 ## Kết quả
 
-<!-- TODO: điền số đo từ Locust (cột Aggregated và từng endpoint). -->
+<!-- TODO: điền số đo thực tế từ benchmark/results/*_stats.csv (dòng Aggregated). -->
 
-- `GET /offerings [browse term]`: RPS = ..., p50 = ... ms, p95 = ... ms, p99 = ... ms, failures = ...
-- `GET /offerings [search]`: ...
-- `GET /offerings/{id}`: ...
-- `GET /students/{id}/enrollments`: ...
-- `GET /students/{id}/schedule`: ...
-- `GET /courses [list]`: ...
-- Tổng hợp (Aggregated): ...
+Kịch bản io (pg_sleep 300 ms):
 
-![Kết quả Locust (tab Statistics / Charts).](assets/locust.png)
+- `async-io` (1 tiến trình): RPS = ..., p50 = ... ms, p95 = ... ms, failures = ...
+- `sync-1w-io`: RPS = ..., p50 = ... ms, p95 = ... ms, failures = ...
+- `sync-4w-io`: RPS = ..., p50 = ... ms, p95 = ... ms, failures = ...
+
+Kịch bản read (truy vấn nhanh):
+
+- `async-read`: ...
+- `sync-1w-read`: ...
+- `sync-4w-read`: ...
+
+Kỳ vọng ở kịch bản io với pool 10 và sleep 300 ms: async một tiến trình giữ được
+khoảng 10 request (giới hạn pool) chạy song song nên đạt xấp xỉ 10 / 0.3 ≈ 33
+RPS; sync một worker chỉ xử lý một request 300 ms tại một thời điểm nên xấp xỉ
+1 / 0.3 ≈ 3 RPS (chênh khoảng 10 lần). sync bốn worker nâng lên xấp xỉ 12 RPS,
+tức sync cần nhiều worker/tiến trình để bằng những gì async làm trong một loop.
+Số đo thực tế dùng để xác nhận các con số này.
 
 ## Phân tích
 
-Một số điểm bám sát thiết kế của API, số đo thực tế dùng để kiểm chứng:
+- **Cơ chế**: một sync worker block trong suốt round-trip tới DB, nên throughput
+  xấp xỉ `1 / latency`; muốn phục vụ N request I/O song song thì cần khoảng N
+  worker (tốn bộ nhớ, thêm tiến trình). Một async worker overlap nhiều round-trip
+  trên cùng một event loop, đạt xấp xỉ `concurrency / latency` cho tới giới hạn
+  pool, chỉ trong một tiến trình.
+- **Bottleneck**: ở kịch bản io, DB latency chiếm ưu thế nên khác biệt rất rõ. Ở
+  kịch bản read, truy vấn nhanh và pool/DB dễ trở thành giới hạn, nên khoảng cách
+  thu hẹp lại; đây là điểm cần trung thực khi kết luận.
+- **Sắc thái GIL**: psycopg2 nhả GIL trong lúc chờ I/O mạng, nên Flask nhiều
+  worker/thread cũng overlap được I/O; lợi thế thật của async là làm điều đó
+  trong một thread với chi phí bộ nhớ và context-switch thấp hơn nhiều, và mở
+  rộng tới hàng nghìn kết nối đồng thời.
+- **Khi nào async không thắng**: với tác vụ CPU-bound, async không giúp gì; và
+  khi DB là bottleneck thì cả hai đều bị chặn như nhau.
 
-- **Framework async (FastAPI + asyncpg).** Các request ở đây đều I/O-bound (chờ
-  DB). Với mô hình async, một event loop phục vụ được nhiều request đang chờ I/O
-  cùng lúc, nên throughput ít bị giới hạn bởi số worker. Một framework sync (ví
-  dụ Flask với driver đồng bộ) sẽ chiếm một worker trong suốt thời gian chờ DB,
-  cần nhiều worker hơn để đạt cùng mức concurrency.
-- **Độ nặng khác nhau giữa các endpoint.** `GET /offerings/{id}` chủ yếu là tra
-  cứu theo primary key nên nhanh nhất. `GET /offerings` (list) nặng hơn vì có
-  join sang `courses`/`terms` và một subquery đếm enrollment active để tính
-  `available_seats`. Kỳ vọng p95 của list cao hơn của detail; số đo sẽ cho thấy
-  chênh lệch này.
-- **Pagination giới hạn payload.** `size=20` chặn kích thước kết quả, giữ latency
-  ổn định khi dữ liệu lớn dần, thay vì trả toàn bộ bảng.
-- **Index.** Các foreign key (`student_id`, `offering_id`, `term_id`,
-  `course_id`) đều có index nên join và lọc nhanh. Ngược lại, `search` dùng
-  `ILIKE '%...%'` trên `title`/`course_code` (không có index trigram) nên phải
-  quét tuần tự, dự kiến là kịch bản đọc chậm nhất; đây là điểm có thể tối ưu.
-- **N+1.** `GET /students/{id}/enrollments` dùng `selectinload` để nạp
-  offering/course/term theo lô, tránh N+1 query.
-
-<!-- TODO: đối chiếu các nhận định trên với số đo thực tế; nêu bottleneck quan
-sát được và giải thích. So sánh với Flask là tùy chọn, chưa được triển khai. -->
+<!-- TODO: đối chiếu số đo với các nhận định trên; nêu bottleneck quan sát được.
+So sánh sâu hơn (ví dụ quét số users để vẽ throughput theo concurrency) là tùy
+chọn. -->

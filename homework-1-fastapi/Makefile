@@ -74,6 +74,24 @@ load: ## Start Locust (web UI at http://localhost:8089)
 psql: ## Open a psql shell into the postgres container
 	$(COMPOSE) exec postgres psql -U app -d enrollment
 
+# ---- BT1 benchmark: sync (Flask) vs async (FastAPI) ----------------------
+# Both apps read the DB exposed by the running stack (make up && make seed).
+# Run bare via uv (no Docker) to keep the corp-TLS Docker pain out of the loop.
+.PHONY: bench-async
+bench-async: ## Run the ASYNC benchmark app (FastAPI) on :9001
+	uv run --extra bench uvicorn bench_async:app --app-dir benchmark --port 9001
+
+.PHONY: bench-sync
+bench-sync: ## Run the SYNC benchmark app (Flask) on :9002 (WEB_CONCURRENCY workers, default 1)
+	uv run --extra bench gunicorn --pythonpath benchmark \
+		-w $(or $(WEB_CONCURRENCY),1) -b 0.0.0.0:9002 bench_sync:app
+
+.PHONY: bench-load
+bench-load: ## Load test -> CSV. e.g. make bench-load HOST=http://localhost:9001 NAME=async-read TAGS=read [USERS=100 RATE=20 TIME=60s]
+	uv run --extra bench locust -f benchmark/locustfile.py --host $(HOST) \
+		--tags $(TAGS) --headless -u $(or $(USERS),100) -r $(or $(RATE),20) \
+		-t $(or $(TIME),60s) --csv benchmark/results/$(NAME)
+
 # ---- Report (Markdown -> PDF via Pandoc + Typst) -------------------------
 # Explicit, ordered source list (filename order = document order).
 REPORT_SRCS := report/00-metadata.md report/01-bai-tap-1.md \
