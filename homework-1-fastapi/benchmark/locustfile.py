@@ -1,15 +1,15 @@
 """Locust load test for the sync-vs-async comparison.
 
-Both benchmark apps expose the same paths, so one locustfile targets either via
---host. Tags let you pick the scenario:
+Runs in the `locust-bench` container (Locust web UI on :8089). In the UI, set
+Host to http://bench-async:9001 (async) or http://bench-sync:9002 (sync), pick
+users + spawn rate, start swarming, and watch the Charts tab.
 
-  read scenario (realistic DB reads):
-    locust -f benchmark/locustfile.py --host http://localhost:9001 \
-           --tags read --headless -u 100 -r 20 -t 60s --csv benchmark/results/async-read
+Both apps expose the same paths, so one locustfile targets either. The scenario
+is chosen by tag on the container command (`--tags io` by default, or
+`BENCH_TAGS=read make bench-up`):
 
-  io scenario (isolates the async advantage: each request waits on pg_sleep):
-    locust -f benchmark/locustfile.py --host http://localhost:9002 \
-           --tags io --headless -u 100 -r 20 -t 60s --csv benchmark/results/sync-io
+  - read: realistic DB reads (fast queries).
+  - io:   each request waits on pg_sleep (default 100ms) to isolate the effect.
 
 wait_time is 0 so each user pushes continuously -> we measure saturation
 throughput/latency, not user think-time.
@@ -23,8 +23,8 @@ from locust import HttpUser, constant, tag, task
 MAX_STUDENT_ID = 150
 MAX_OFFERING_ID = 150
 CURRENT_TERM_ID = 3
-# DB sleep for the /io scenario (seconds). Default 300 ms; override with env.
-IO_SECONDS = float(os.getenv("BENCH_IO_SECONDS", "0.3"))
+# DB sleep for the /io scenario (seconds). Default 100 ms; override with env.
+IO_SECONDS = float(os.getenv("BENCH_IO_SECONDS", "0.1"))
 
 
 class BenchUser(HttpUser):

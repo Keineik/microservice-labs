@@ -19,12 +19,7 @@ frontend.
 được chọn qua profile switcher (góc trên phải, có tìm kiếm). Đây là cách mô phỏng
 "ai đang đăng nhập"; hệ thống thật sẽ lấy student từ phiên đã xác thực.
 
-```mermaid
-flowchart LR
-    Browser -->|"HTML + HTMX"| Web["Web client :8001"]
-    Web -->|"httpx, JSON"| API["REST API :8000"]
-    API --> DB[("PostgreSQL")]
-```
+![Kiến trúc web client (Backend-for-Frontend).](assets/flowchart.png)
 
 ### Các màn hình
 

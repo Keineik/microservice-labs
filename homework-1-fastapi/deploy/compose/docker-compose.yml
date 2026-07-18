@@ -7,6 +7,9 @@ services:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app
       POSTGRES_DB: enrollment
+    # Raised so the benchmark's high pool fits: up to (workers x BENCH_POOL_SIZE)
+    # connections, e.g. 4 workers x 100 = 400.
+    command: ["postgres", "-c", "max_connections=500"]
     ports:
       - "5432:5432"
     volumes:
@@ -73,6 +76,83 @@ services:
       - "8089:8089"
     depends_on:
       - api
+
+  # ---- BT1 benchmark (sync vs async) — "bench" profile --------------------
+  # Reuse the API image (has the bench deps) + mount the benchmark source.
+  # Run `make up && make seed` first so the shared Postgres is seeded.
+
+  # ASYNC endpoint: FastAPI + async SQLAlchemy + asyncpg (one event loop).
+  bench-async:
+    image: enrollment-api:latest
+    profiles: ["bench"]
+    environment:
+      BENCH_DSN: app:app@postgres:5432/enrollment
+      BENCH_POOL_SIZE: "100"
+      BENCH_IO_SECONDS: "0.1"
+    # Pin CPU/memory so runs are consistent and neither contender can grab more
+    # of the host than the other. Same limits on bench-async and bench-sync;
+    # tune with BENCH_CPUS / BENCH_MEM. (docker compose v2 honors these on `up`.)
+    deploy:
+      resources:
+        limits:
+          cpus: "${BENCH_CPUS:-2}"
+          memory: ${BENCH_MEM:-1g}
+    # uvicorn worker count via WEB_CONCURRENCY (default 1), same knob as bench-sync,
+    # so async/sync are compared at equal worker counts.
+    entrypoint:
+      ["uvicorn", "bench_async:app", "--app-dir", "/app/benchmark",
+       "--host", "0.0.0.0", "--port", "9001", "--workers", "${WEB_CONCURRENCY:-1}"]
+    volumes:
+      - ../../src:/app/src
+      - ../../benchmark:/app/benchmark
+    ports:
+      - "9001:9001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # SYNC endpoint: Flask + sync SQLAlchemy + psycopg2 (gunicorn sync workers).
+  # Worker count via WEB_CONCURRENCY (default 1), e.g. WEB_CONCURRENCY=4 make bench-up.
+  bench-sync:
+    image: enrollment-api:latest
+    profiles: ["bench"]
+    environment:
+      BENCH_DSN: app:app@postgres:5432/enrollment
+      BENCH_POOL_SIZE: "100"
+      BENCH_IO_SECONDS: "0.1"
+      WEB_CONCURRENCY: "${WEB_CONCURRENCY:-1}"
+    # Same CPU/memory cap as bench-async (see note there) for a fair comparison.
+    deploy:
+      resources:
+        limits:
+          cpus: "${BENCH_CPUS:-2}"
+          memory: ${BENCH_MEM:-1g}
+    entrypoint:
+      ["gunicorn", "--pythonpath", "/app/benchmark", "-b", "0.0.0.0:9002",
+       "bench_sync:app"]
+    volumes:
+      - ../../src:/app/src
+      - ../../benchmark:/app/benchmark
+    ports:
+      - "9002:9002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Locust web UI. In the UI, set Host to http://bench-async:9001 or
+  # http://bench-sync:9002. Scenario tag defaults to "io"; override with
+  # BENCH_TAGS=read.
+  locust-bench:
+    image: locustio/locust:2.31.6
+    profiles: ["bench"]
+    volumes:
+      - ../../benchmark:/mnt/locust
+    command: -f /mnt/locust/locustfile.py --tags ${BENCH_TAGS:-io}
+    ports:
+      - "8089:8089"
+    depends_on:
+      - bench-async
+      - bench-sync
 
 volumes:
   pgdata:

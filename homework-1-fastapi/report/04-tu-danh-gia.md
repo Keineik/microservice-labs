@@ -32,13 +32,19 @@
 
 ## Kiến thức đã áp dụng
 
-- SQLAlchemy 2.0 async + asyncpg; transaction và row lock (`FOR UPDATE`) để tránh
-  overbook / double-book.
-- Partial unique index để đảm bảo tính duy nhất của đăng ký đang active mà vẫn giữ
-  lịch sử.
-- Thiết kế REST, status code, và định dạng lỗi RFC 7807.
+Các kiến thức trực tiếp theo yêu cầu của đề:
+
+- Contract client/server bằng Pydantic + OpenAPI/Swagger.
+- Thiết kế REST đúng chuẩn (HTTP verb, status code) và định dạng lỗi RFC 7807.
+- Dependency Injection với FastAPI `Depends` (thay provider để test).
 - Idempotency cho thao tác POST và API versioning theo path.
-- Dependency Injection với FastAPI `Depends`, giúp test bằng cách override một
-  provider.
+- So sánh hiệu năng sync so với async bằng Locust (Bài tập 1).
+- Web client (Bài tập 3) theo mô hình Backend-for-Frontend + HTMX.
+
+Các kiến thức bổ trợ:
+
+- SQLAlchemy 2.0 async + asyncpg; transaction và row lock (`FOR UPDATE`) cùng
+  partial unique index để tránh overbook / double-book và trùng đăng ký.
 - Alembic migration, seed dữ liệu bằng Faker, kiểm thử với pytest.
-- Mô hình Backend-for-Frontend và HTMX cho web client, đóng gói bằng Docker Compose.
+- Đóng gói (containerize) từng service bằng Docker, và điều phối nhiều container
+  bằng Docker Compose.

@@ -3,7 +3,8 @@
 Goal: show how the **concurrency model** affects performance on I/O-bound DB
 reads. Same database, same queries, same serialization, same connection pool —
 the only variable is sync (Flask/WSGI, blocks a worker per request) vs async
-(FastAPI/ASGI, one event loop overlaps many in-flight I/O waits).
+(FastAPI/ASGI, one event loop overlaps many in-flight I/O waits). Driven from
+the **Locust web UI** so you can control the load and screenshot the charts.
 
 ## Files
 
@@ -12,82 +13,68 @@ the only variable is sync (Flask/WSGI, blocks a worker per request) vs async
 - `bench_async.py` - FastAPI + async SQLAlchemy + asyncpg (uvicorn).
 - `bench_sync.py` - Flask + sync SQLAlchemy + psycopg2 (gunicorn sync workers).
 - `locustfile.py` - one load test for either app; tags pick the scenario.
-- `results/` - Locust CSV output + exported charts.
 
 Both apps expose the same paths: `/offerings`, `/offerings/{id}`,
 `/students/{id}/enrollments`, `/courses`, and `/io?seconds=` (a `pg_sleep`
-endpoint used to isolate the effect).
+endpoint used to isolate the effect; default 100ms).
 
-## Prerequisites
+## Run it (Docker Compose + Locust UI)
 
 ```bash
-make up && make seed          # Postgres (host :5432) up and seeded
-uv sync --extra bench         # flask, gunicorn, psycopg2, locust
-uv sync --extra analysis      # (optional) pandas, matplotlib, jupyterlab for the notebook
+make up && make seed     # builds the image (with bench deps) + seeds Postgres
+make bench-up            # bench-async :9001, bench-sync :9002, Locust UI :8089
+```
+
+Then open the Locust UI at <http://localhost:8089> and, for each app:
+
+1. Set **Host** to `http://bench-async:9001` (async) or `http://bench-sync:9002`
+   (sync) — these are the compose service names, resolvable from the Locust
+   container.
+2. Set number of users (e.g. 200) and spawn rate (e.g. 20), start swarming.
+3. Watch the **Charts** tab (RPS, response times, users). Screenshot it for the
+   report (async run and sync run, same settings).
+
+Scenario tag defaults to `io` (the clincher). Switch scenarios / sync workers by
+recreating the stack:
+
+```bash
+BENCH_TAGS=read make bench-up        # realistic read scenario
+WEB_CONCURRENCY=4 make bench-up      # 4 workers for BOTH async (uvicorn) and sync (gunicorn)
+make bench-down                      # stop
 ```
 
 ## What is held constant (fairness)
 
 - Same Postgres, same seed data, same SQL (shared statements), same indexes.
-- Same pool size (`BENCH_POOL_SIZE`, default 10) and `max_overflow=0` on both.
+- **High pool, not a bottleneck** (`BENCH_POOL_SIZE`, default 100) and
+  `max_overflow=0` on both, so the ceiling comes from the concurrency model + CPU,
+  not an artificially small pool. Each worker process has its own pool, so total
+  connections = workers x pool; Postgres `max_connections` is raised to 500 to fit.
 - Same JSON payloads (shared serializer; dates/times to ISO strings).
-- Same machine; warm up before measuring; run each scenario a few times.
+- Same users/spawn-rate/scenario per compared pair.
+- **Same CPU/memory cap on both containers** (`BENCH_CPUS` default 2, `BENCH_MEM`
+  default 1g) so neither grabs more of the host. Locust is left unlimited (so the
+  load generator is never the bottleneck); Postgres is shared (equal for both).
+  Make sure the Colima VM has enough cores for the caps (e.g. `colima start --cpu 4`).
 
-Only the concurrency model changes. Note: a sync app scaled to N gunicorn
-workers holds N x pool_size DB connections total, while the async app holds
-pool_size in one process - call that out when comparing.
+Only the concurrency model + worker count change.
 
-## Scenarios
+## Suggested comparison
 
-Start each app in its own terminal, then load-test it.
+Four runs (async/sync x 1/4 workers), same users + scenario, screenshot each:
 
-```bash
-# ASYNC contender (one event loop)
-make bench-async                        # FastAPI on :9001
+- `async` 1 worker (`make bench-up`, host `bench-async:9001`)
+- `async` 4 workers (`WEB_CONCURRENCY=4 make bench-up`, host `bench-async:9001`)
+- `sync` 1 worker (`make bench-up`, host `bench-sync:9002`)
+- `sync` 4 workers (`WEB_CONCURRENCY=4 make bench-up`, host `bench-sync:9002`)
 
-# SYNC contender (start ONE of these)
-make bench-sync                         # Flask, 1 sync worker  on :9002
-WEB_CONCURRENCY=4 make bench-sync       # Flask, 4 sync workers on :9002
-```
+Run the `io` scenario (100ms sleep) for the headline gap, then optionally `read`
+(fast queries) to show the gap shrinks when the DB/queries dominate.
 
-Realistic read load:
-
-```bash
-make bench-load HOST=http://localhost:9001 NAME=async-read   TAGS=read
-make bench-load HOST=http://localhost:9002 NAME=sync-1w-read TAGS=read
-```
-
-I/O-isolation load (the clincher — each request waits in the DB; default 300 ms,
-override with `BENCH_IO_SECONDS` or `?seconds=`):
-
-```bash
-make bench-load HOST=http://localhost:9001 NAME=async-io   TAGS=io
-make bench-load HOST=http://localhost:9002 NAME=sync-1w-io TAGS=io
-```
-
-Suggested matrix: `async-1w` vs `sync-1w` (headline), plus `sync-4w` to show
-sync catching up at the cost of more processes/connections. Optionally sweep
-`-u` (users) to plot throughput vs concurrency.
-
-Each run writes `results/<NAME>_stats.csv` (+ `_stats_history.csv`,
-`_failures.csv`).
-
-## Reading the results
-
-`results/*_stats.csv` has per-endpoint and aggregated rows (request count,
-failures, median/95%/99%, RPS). Compare the "Aggregated" row across runs, and
-watch p95/p99 diverge as concurrency rises. Capture `docker stats` (or `top`)
-during a run to record CPU/memory cost per configuration.
-
-The `analysis.ipynb` notebook (see the project README / report §1) reads these
-CSVs with pandas, plots RPS and p95 vs concurrency, exports the figures to
-`../report/assets/`, and writes the analysis that feeds report section 1.
-
-## Caveats to state in the report
+## Interpreting the results
 
 - Async wins most on **I/O-bound** work under **high concurrency**; for CPU-bound
-  work or when the DB is the bottleneck, the gap shrinks - the `read` vs `io`
-  scenarios show both ends.
-- `psycopg2` releases the GIL during network I/O, so threaded/multi-worker sync
-  can also overlap I/O; async's edge is doing it in one thread with far less
-  memory and context-switching.
+  work or when the DB is the bottleneck, the gap shrinks (`io` vs `read` show
+  both ends).
+- `psycopg2` releases the GIL during network I/O, so multi-worker sync can also
+  overlap I/O; async's edge is doing it in one process with far less memory.

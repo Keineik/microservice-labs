@@ -21,11 +21,12 @@ ENV PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
 
 # --- Dependencies + project ----------------------------------------------
 # Editable (-e) so a mounted source tree hot-reloads via uvicorn --reload.
-# Install with the `web` extra (jinja2 + httpx) so the same image can run
-# either the API (app.main) or the BT3 web client (web.main).
+# Install with the `web` + `bench` extras so the one image can run the API
+# (app.main), the BT3 web client (web.main), and both BT1 benchmark apps
+# (bench_async on uvicorn, bench_sync on gunicorn/Flask).
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install --no-cache-dir -e ".[web]"
+RUN pip install --no-cache-dir -e ".[web,bench]"
 
 # --- Runtime files --------------------------------------------------------
 COPY alembic.ini ./

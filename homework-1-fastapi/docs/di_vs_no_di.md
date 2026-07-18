@@ -1,7 +1,7 @@
 # Dependency Injection: with vs. without
 
-The assignment asks to use DI and to explain the difference. This service uses
-FastAPI's built-in DI (`Depends`). Here is the contrast.
+This service uses FastAPI's built-in DI (`Depends`). Here is the contrast between
+using it and not.
 
 ## Without DI (anti-pattern)
 

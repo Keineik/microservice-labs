@@ -29,10 +29,14 @@ from app.models import Course, CourseOffering, Enrollment
 _BASE_DSN = os.getenv("BENCH_DSN", "app:app@localhost:5432/enrollment")
 ASYNC_URL = f"postgresql+asyncpg://{_BASE_DSN}"
 SYNC_URL = f"postgresql+psycopg2://{_BASE_DSN}"
-POOL_SIZE = int(os.getenv("BENCH_POOL_SIZE", "10"))
-# Default DB sleep for the /io scenario, in seconds (0.3 = 300 ms). Override
+# Pool set high so it is NOT the bottleneck — the ceiling should come from the
+# concurrency model + CPU, not an artificially small pool. Note each worker
+# process has its own pool, so total DB connections = workers x POOL_SIZE
+# (Postgres max_connections is raised to match in docker-compose).
+POOL_SIZE = int(os.getenv("BENCH_POOL_SIZE", "100"))
+# Default DB sleep for the /io scenario, in seconds (0.1 = 100 ms). Override
 # per request with ?seconds=, or globally with BENCH_IO_SECONDS.
-IO_DEFAULT_SECONDS = float(os.getenv("BENCH_IO_SECONDS", "0.3"))
+IO_DEFAULT_SECONDS = float(os.getenv("BENCH_IO_SECONDS", "0.1"))
 
 
 # --- Serialization (identical payloads on both sides) ---------------------

@@ -1,4 +1,4 @@
-# Design notes (for the report)
+# Design notes
 
 ## Domain model — why offerings and terms
 
@@ -41,10 +41,9 @@ term's registration window is still open, which frees the seat.
 
 The web app is a **separate FastAPI service** that renders HTML with Jinja2 +
 HTMX and talks to the JSON API over HTTP (`httpx`). It has **no database access**
-of its own. The request path is `browser → web (BFF) → API → DB`, which is a
-deliberate, honest client/server split for the distributed-systems course rather
-than folding the UI into the API process. The JSON API is unchanged, so its tests
-and contract are unaffected.
+of its own. The request path is `browser → web (BFF) → API → DB`, a deliberate
+client/server split rather than folding the UI into the API process. The JSON API
+is unchanged, so its tests and contract are unaffected.
 
 - **Server-rendered + HTMX, minimal JS.** Search, pagination, register, and drop
   are HTMX requests that swap an HTML fragment; there is essentially no
@@ -68,7 +67,7 @@ and contract are unaffected.
   only to warn *before* submitting; the API remains the source of truth and still
   returns a 409 on a real clash.
 
-## API versioning (BT2 requirement)
+## API versioning
 
 Versioning is **path-based**: routers are mounted under `/api/v1` and `/api/v2`
 as siblings (`app/main.py`), so both versions are served **simultaneously**.
@@ -90,7 +89,7 @@ just maps the ORM model to the new shape). Only `students` is re-versioned, as a
 focused demonstration; a real migration would version every resource (or default
 unchanged ones to their v1 shape).
 
-## Scope & assumptions (please note)
+## Scope & assumptions
 
 - **No authentication yet.** Auth/authorization is intentionally out of scope for
   this exercise (it is planned for a later assignment). Until then the API takes
@@ -102,8 +101,8 @@ unchanged ones to their v1 shape).
   those tables are populated by the seed script. The API surface is limited to
   **student-facing activities**: browse the catalog/offerings, view your own
   enrollments and schedule, register, and cancel.
-- **Terms is a small dimension table** (a handful of rows); the "≥100 rows"
-  guidance is met by students, courses, offerings, and enrollments.
+- **Terms is a small dimension table** by nature (a handful of rows); the bulk of
+  the data lives in students, courses, offerings, and enrollments.
 - **Concurrency note:** the `FOR UPDATE` lock is exercised on Postgres. The test
   suite runs on SQLite (single-threaded), where row locking is a no-op — the
   logic is present and correct, but true concurrency is only meaningful against

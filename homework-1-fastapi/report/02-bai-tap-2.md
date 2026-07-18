@@ -39,34 +39,7 @@ với thực tế.
 - **idempotency_keys**: lưu key, method, path, status_code và id kết quả của các
   POST đã xử lý, phục vụ retry an toàn.
 
-```mermaid
-erDiagram
-    STUDENT ||--o{ ENROLLMENT : "đăng ký"
-    COURSE_OFFERING ||--o{ ENROLLMENT : "có"
-    COURSE ||--o{ COURSE_OFFERING : "được mở thành"
-    TERM ||--o{ COURSE_OFFERING : "trong"
-    COURSE {
-        int id
-        string course_code
-        int credits
-    }
-    TERM {
-        int id
-        datetime registration_starts_at
-        datetime registration_ends_at
-    }
-    COURSE_OFFERING {
-        int id
-        int capacity
-        string status
-        string day_of_week
-    }
-    ENROLLMENT {
-        int id
-        string status
-        float grade
-    }
-```
+![Sơ đồ ERD của cơ sở dữ liệu.](assets/er-diagram.png)
 
 Số dòng dữ liệu (sinh bằng `scripts/seed_data.py` dùng Faker; idempotent, chạy
 lại không tạo trùng):
@@ -141,18 +114,7 @@ Các field suy diễn giúp client không phải tự tính lại:
 `POST /enrollments` chạy trong một transaction và dùng row lock để tránh
 overbook (vượt capacity) cũng như double-book (một student đăng ký trùng):
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant API
-    participant DB as PostgreSQL
-    C->>API: POST /enrollments {student_id, offering_id}
-    API->>DB: lock student row (FOR UPDATE)
-    API->>DB: lock offering row (FOR UPDATE)
-    API->>API: kiểm tra status OPEN, registration window, trùng đăng ký, capacity, trùng lịch
-    API->>DB: INSERT enrollment (status = REGISTERED)
-    API-->>C: 201 Created
-```
+![Luồng đăng ký (sequence diagram).](assets/registration-sequence.svg)
 
 Các quyết định thiết kế:
 
@@ -182,8 +144,10 @@ sang DB test.
 
 So sánh không dùng và có dùng DI (chi tiết ở `docs/di_vs_no_di.md`):
 
-- **Testability**: không DI cần một DB thật để chạy handler; có DI thì override
-  `get_db` sang SQLite in-memory (`tests/conftest.py`).
+- **Testability**: không DI thì phải có DB thật mới chạy được handler. Có DI thì
+  test linh hoạt theo hai kiểu: unit test đưa vào repository giả (fake, không cần
+  DB, `tests/unit/`), còn integration test override `get_db` sang SQLite in-memory
+  nhẹ (`tests/conftest.py`) để chạy cả app qua HTTP.
 - **Vòng đời session**: không DI thường dùng session global (dễ leak state, lỗi
   concurrency); có DI thì session theo từng request, tự đóng bởi generator của
   `get_db`.
@@ -222,7 +186,9 @@ Ví dụ lỗi 404:
 Nhờ chuẩn hóa, client xử lý lỗi theo một hình dạng thống nhất thay vì mỗi
 endpoint một kiểu.
 
-![Lỗi 404 và 422 ở dạng problem+json.](assets/rfc7807.png)
+![Lỗi 404 (không tìm thấy resource) ở dạng problem+json.](assets/rfc7807-404.png)
+
+![Lỗi 422 (request không qua validate) ở dạng problem+json, kèm mảng `errors`.](assets/rfc7807-422.png)
 
 ### Idempotency
 
@@ -256,4 +222,6 @@ curl -s localhost:8000/api/v1/students/1   # {"student_code":"SV00001","full_nam
 curl -s localhost:8000/api/v2/students/1   # {"code":"SV00001","name":"..."}
 ```
 
-![Response v1 so với v2 cho cùng một student.](assets/versioning.png)
+![Response v1 (`GET /api/v1/students`): có `student_code`, `full_name` và các timestamp.](assets/versioning-v1.png)
+
+![Response v2 (`GET /api/v2/students`): đổi thành `code`, `name` và bỏ timestamp.](assets/versioning-v2.png)
