@@ -42,6 +42,17 @@ API Swagger UI → http://localhost:8000/docs · health → `/health`
 make logs · make psql · make down (keep data) · make clean (drop volume) · make load
 ```
 
+**Demo notebook (video walkthrough)** → [`notebooks/api_demo.ipynb`](notebooks/api_demo.ipynb).
+Live calls against the running API: successful reads (200), register (201) with
+`Idempotency-Key`, idempotent retry, `404`/`422` as RFC 7807, `v1`-vs-`v2`
+versioning, and cancel (204). It auto-cleans up, so it is safe to re-run.
+
+```bash
+make up && make seed          # API must be up + seeded
+uv sync --extra web --extra notebook
+make notebook                 # or: uv run jupyter lab notebooks/api_demo.ipynb
+```
+
 ## API surface (all under `/api/v1`) — student-facing only
 
 **Catalog / browse (read-only):**

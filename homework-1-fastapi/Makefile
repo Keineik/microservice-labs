@@ -19,6 +19,10 @@ dev: ## Run the API locally with autoreload (expects a reachable Postgres)
 web: ## Run the BT3 web client locally (expects the API on :8000)
 	uv run --extra web uvicorn web.main:app --reload --app-dir src --port 8001
 
+.PHONY: notebook
+notebook: ## Open the demo notebook in Jupyter Lab (expects the API on :8000, seeded)
+	uv run --extra web --extra notebook jupyter lab notebooks/api_demo.ipynb
+
 .PHONY: test
 test: ## Run the test suite (uses in-memory SQLite, no Postgres needed)
 	uv run --extra dev pytest -q
