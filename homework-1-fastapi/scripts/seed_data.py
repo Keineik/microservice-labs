@@ -40,6 +40,11 @@ async def seed() -> None:
             print("Database already seeded. Nothing to do.")
             return
 
+        # Deterministic data: a fresh reseed always yields the same rows, so the
+        # demo/notebook can hardcode ids (e.g. student 1 registers for offering 101).
+        random.seed(42)
+        Faker.seed(42)
+
         now = datetime.now(UTC)
         today = now.date()
 
