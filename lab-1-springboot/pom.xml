@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      Parent POM for the course-registration microservice lab.
+
+      Inherits from spring-boot-starter-parent (dependency + plugin management,
+      the spring-boot-maven-plugin), and imports the Spring Cloud BOM so every
+      module gets consistent Eureka / OpenFeign / Resilience4j versions.
+
+      Multi-module (reactor) build: one `mvn package` builds all five services,
+      and the Docker build shares a single dependency-resolution layer across
+      them. Runtime independence is preserved - each module produces its own
+      bootable jar, container, port and (in-memory) database.
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>course-registration-parent</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>course-registration</name>
+    <description>Microservice course registration lab (Eureka + OpenFeign)</description>
+
+    <modules>
+        <module>discovery-server</module>
+        <module>student-service</module>
+        <module>course-service</module>
+        <module>enrollment-service</module>
+        <module>web-client</module>
+    </modules>
+
+    <properties>
+        <!-- Java 17 is the baseline for Spring Boot 4.x. -->
+        <java.version>17</java.version>
+        <!-- Spring Cloud 2025.1.x "Oakwood" is the release train for Spring Boot 4.x. -->
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

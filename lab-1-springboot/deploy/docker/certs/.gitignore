@@ -1,0 +1,5 @@
+# Corporate CA certs are machine-specific (e.g. Cloudflare WARP / Zscaler).
+# Keep the directory, never commit the certs themselves.
+*
+!.gitignore
+!.gitkeep

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh sách sinh viên</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header class="topbar">
+    <span class="brand">Hệ thống đăng ký học phần</span>
+    <span class="subtitle">Web Client (Thymeleaf) &middot; gọi service qua Eureka + OpenFeign</span>
+</header>
+
+<main>
+    <h1>Danh sách sinh viên</h1>
+
+    <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+    <table th:unless="${#lists.isEmpty(students)}">
+        <thead>
+        <tr>
+            <th>Mã SV</th>
+            <th>Họ tên</th>
+            <th>Email</th>
+            <th>Ngành</th>
+            <th>Khóa</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${students}">
+            <td th:text="${s.studentCode}">SV001</td>
+            <td th:text="${s.fullName}">Nguyen Van An</td>
+            <td th:text="${s.email}">an@example.edu</td>
+            <td th:text="${s.major}">Computer Science</td>
+            <td th:text="${s.enrollmentYear}">2022</td>
+            <td>
+                <a class="btn" th:href="@{/students/{code}(code=${s.studentCode})}">Xem đăng ký</a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p class="muted" th:if="${#lists.isEmpty(students)}">Không có dữ liệu sinh viên.</p>
+</main>
+</body>
+</html>

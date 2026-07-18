@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết đăng ký học phần</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header class="topbar">
+    <span class="brand">Hệ thống đăng ký học phần</span>
+    <span class="subtitle">Web Client (Thymeleaf) &middot; gọi service qua Eureka + OpenFeign</span>
+</header>
+
+<main>
+    <p><a th:href="@{/}">&larr; Danh sách sinh viên</a></p>
+
+    <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+    <div th:if="${data}">
+        <div class="alert warn" th:if="${data.partial}">
+            Dữ liệu hiển thị chưa đầy đủ do một service tạm thời không sẵn sàng.
+            <ul>
+                <li th:each="w : ${data.warnings}" th:text="${w}"></li>
+            </ul>
+        </div>
+
+        <section class="card">
+            <h1 th:if="${data.student != null}" th:text="${data.student.fullName}">Họ tên</h1>
+            <h1 th:if="${data.student == null}" th:text="${data.studentCode}">Mã SV</h1>
+
+            <dl th:if="${data.student != null}" class="info">
+                <div><dt>Mã SV</dt><dd th:text="${data.student.studentCode}">SV001</dd></div>
+                <div><dt>Email</dt><dd th:text="${data.student.email}">an@example.edu</dd></div>
+                <div><dt>Ngành</dt><dd th:text="${data.student.major}">Computer Science</dd></div>
+                <div><dt>Khóa</dt><dd th:text="${data.student.enrollmentYear}">2022</dd></div>
+            </dl>
+            <p th:if="${data.student == null}" class="muted">
+                Không lấy được thông tin sinh viên (student-service không sẵn sàng).
+            </p>
+        </section>
+
+        <h2>Học phần đã đăng ký</h2>
+        <table th:unless="${#lists.isEmpty(data.enrollments)}">
+            <thead>
+            <tr>
+                <th>Mã HP</th>
+                <th>Tên học phần</th>
+                <th>Tín chỉ</th>
+                <th>Khoa</th>
+                <th>Trạng thái</th>
+                <th>Điểm</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="c : ${data.enrollments}">
+                <td th:text="${c.courseCode}">CS101</td>
+                <td th:text="${c.detailsAvailable ? c.title : '(không có thông tin)'}">Intro</td>
+                <td th:text="${c.credits}">3</td>
+                <td th:text="${c.department}">Computer Science</td>
+                <td><span class="badge" th:classappend="${'st-' + c.status}" th:text="${c.status}">REGISTERED</span></td>
+                <td th:text="${c.grade != null ? c.grade : '-'}">-</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <p class="muted" th:if="${#lists.isEmpty(data.enrollments)}">Sinh viên chưa đăng ký học phần nào.</p>
+    </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,22 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: discovery-server
+
+eureka:
+  client:
+    # This IS the registry, so it neither registers with nor fetches from itself.
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # Disable self-preservation in a dev/lab setup so de-registration is prompt
+    # when a service stops. Leave this ON in production.
+    enable-self-preservation: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

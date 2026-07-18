@@ -1,0 +1,38 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: student-service
+  datasource:
+    url: jdbc:h2:mem:studentdb;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+eureka:
+  client:
+    service-url:
+      # Overridden in docker-compose to point at the discovery-server container.
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    # Fetch the registry more often than the 30s default so discovery is quick in dev.
+    registry-fetch-interval-seconds: 10
+  instance:
+    # Register by IP so peers resolve correctly inside the compose network.
+    prefer-ip-address: true
+    # Renew the lease more often than the 30s default so registration shows up fast.
+    lease-renewal-interval-in-seconds: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
