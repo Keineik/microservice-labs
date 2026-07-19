@@ -1,8 +1,7 @@
 ---
 title: "Hệ thống đăng ký học phần Microservice: Eureka và OpenFeign"
 subtitle: "BTTH 01 - Tạo service"
-author: "Kien Van"
-date: "2026-07-18"
+author: "22127218 - Văn Bá Đức Kiên"
 lang: vi
 papersize: a4
 fontsize: 11pt

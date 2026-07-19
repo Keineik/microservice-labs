@@ -26,27 +26,7 @@ viên theo học), và các luồng đơn giản chỉ chạm một service.
 7. web-client kết xuất trang HTML: thông tin sinh viên, các chỉ số học tập, và
    bảng học phần (đã hoàn thành / đang đăng ký).
 
-```mermaid
-sequenceDiagram
-    actor U as Người dùng
-    participant W as web-client
-    participant E as enrollment-service
-    participant S as student-service
-    participant C as course-service
-
-    U->>W: Mở /students/SV001
-    W->>E: GET /api/enrollments/student/SV001 (Feign qua Eureka)
-    E->>E: Đọc các bản ghi đăng ký của SV001 (DB riêng)
-    E->>S: GET /api/students/SV001 (Feign)
-    S-->>E: Thông tin sinh viên
-    loop Mỗi lớp học phần đã đăng ký
-        E->>C: GET /api/offerings/{offeringCode} (Feign)
-        C-->>E: Chi tiết lớp học phần + học phần
-    end
-    E->>E: Tính tổng tín chỉ và GPA
-    E-->>W: Tổng hợp: sinh viên + bảng điểm + GPA
-    W-->>U: Trang HTML kết quả
-```
+![Luồng xem bảng điểm sinh viên.](assets/student-sequence.png)
 
 ## Luồng 2: xem chi tiết một học phần
 
@@ -62,29 +42,7 @@ sequenceDiagram
 5. web-client kết xuất: thông tin học phần, các lớp đã mở, và với mỗi lớp là danh
    sách sinh viên kèm kết quả.
 
-```mermaid
-sequenceDiagram
-    actor U as Người dùng
-    participant W as web-client
-    participant C as course-service
-    participant E as enrollment-service
-    participant S as student-service
-
-    U->>W: Mở /courses/CS101
-    W->>C: GET /api/courses/CS101 (Feign)
-    C-->>W: Thông tin học phần
-    W->>C: GET /api/courses/CS101/offerings (Feign)
-    C-->>W: Danh sách lớp học phần (năm/học kỳ/lớp)
-    loop Mỗi lớp học phần
-        W->>E: GET /api/enrollments/offering/{offeringCode} (Feign)
-        loop Mỗi sinh viên theo học
-            E->>S: GET /api/students/{studentCode} (Feign)
-            S-->>E: Họ tên, ngành
-        end
-        E-->>W: Danh sách sinh viên + kết quả
-    end
-    W-->>U: Trang HTML kết quả
-```
+![Luồng xem chi tiết học phần.](assets/course-sequence.png)
 
 ## Các luồng một service (không cross-service)
 
@@ -99,17 +57,7 @@ Các thao tác còn lại chỉ chạm đúng một service, không cần bướ
 Điểm chung: vẫn gọi service theo tên qua Eureka + Feign, chỉ khác là không tổng
 hợp dữ liệu từ nhiều service.
 
-```mermaid
-sequenceDiagram
-    actor U as Người dùng
-    participant W as web-client
-    participant S as student-service / course-service
-
-    U->>W: Mở /students, /courses hoặc submit form thêm sinh viên
-    W->>S: GET danh sách / POST tạo mới (Feign qua Eureka)
-    S-->>W: Dữ liệu hoặc kết quả tạo
-    W-->>U: Trang HTML
-```
+![Luồng một service.](assets/single-service-sequence.png)
 
 ## Luồng khi một service không sẵn sàng (graceful degradation)
 
@@ -117,20 +65,7 @@ Nếu course-service (hoặc student-service) tạm thời không phản hồi, 
 tương ứng thất bại và circuit breaker kích hoạt fallback. enrollment-service vẫn
 trả về response, nhưng đánh dấu `partial = true` và kèm cảnh báo.
 
-```mermaid
-sequenceDiagram
-    participant W as web-client
-    participant E as enrollment-service
-    participant C as course-service
-
-    W->>E: GET /api/enrollments/student/SV001
-    E->>C: GET /api/offerings/CS101-2024-1-01 (Feign)
-    Note over C: course-service đang sập
-    C--xE: Timeout / lỗi kết nối
-    E->>E: Fallback: placeholder suy ra từ offeringCode
-    E-->>W: partial = true, kèm warning
-    Note over W: Hiển thị banner cảnh báo,<br/>các học phần vẫn liệt kê nhưng thiếu chi tiết
-```
+![Luồng graceful degradation.](assets/graceful-degradation-sequence.png)
 
 Điểm quan trọng: dữ liệu đăng ký (mã lớp học phần, trạng thái, điểm) luôn có vì
 thuộc cơ sở dữ liệu riêng của enrollment-service; chỉ phần chi tiết lấy từ service

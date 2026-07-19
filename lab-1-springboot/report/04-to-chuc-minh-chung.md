@@ -44,29 +44,43 @@ make ps      # theo dõi các container chuyển sang trạng thái healthy
 COURSE-SERVICE, ENROLLMENT-SERVICE, WEB-CLIENT) đã đăng ký trong mục "Instances
 currently registered with Eureka".
 
-![Eureka Dashboard với các service đã đăng ký.](assets/eureka-dashboard.png)
+![Eureka Dashboard.](assets/eureka-dashboard.png)
 
 ### Web Client (giao diện giáo vụ)
 
-Web Client đóng vai trò console cho giáo vụ. Mỗi màn hình kèm một ảnh minh chứng:
+Web Client đóng vai trò console cho giáo vụ. Các màn hình chính:
 
-![Danh sách sinh viên (kèm nút thêm mới).](assets/web-students.png)
+![Danh sách sinh viên.](assets/web-students.png)
 
 ![Form thêm sinh viên.](assets/web-student-form.png)
 
-![Chi tiết một sinh viên: thông tin, tổng tín chỉ, GPA và bảng điểm.](assets/web-student-detail.png)
+![Chi tiết sinh viên.](assets/web-student-detail.png)
 
 ![Danh sách học phần.](assets/web-courses.png)
 
-![Chi tiết một học phần: các lớp đã mở theo năm / học kỳ / lớp kèm danh sách sinh viên theo học và kết quả.](assets/web-course-detail.png)
+![Chi tiết học phần.](assets/web-course-detail.png)
 
-### Minh chứng graceful degradation (tùy chọn)
+### Minh chứng graceful degradation
 
-Khi dừng course-service rồi tải lại trang, các học phần vẫn được liệt kê nhưng
-phần chi tiết được đánh dấu là không có, kèm banner cảnh báo. Điều này minh họa
-cơ chế fallback của Resilience4j.
+Dùng docker compose để dừng một service rồi tải lại trang web nhằm kiểm chứng cơ
+chế fallback của Resilience4j:
 
-<!-- TODO: chèn ảnh assets/web-degraded.png nếu muốn minh họa luồng graceful degradation. -->
+```bash
+# dừng course-service (hoặc student-service)
+docker compose -f deploy/compose/docker-compose.yml stop course-service
+# khởi động lại sau khi thử
+docker compose -f deploy/compose/docker-compose.yml start course-service
+```
+
+Khi course-service dừng, trang chi tiết sinh viên vẫn liệt kê học phần nhưng tên
+học phần và tín chỉ hiển thị "(không có thông tin)", GPA để trống, kèm banner
+cảnh báo. Khi student-service dừng, trang chi tiết học phần vẫn liệt kê các lớp
+nhưng tên sinh viên hiển thị "(không có thông tin)". Trong cả hai trường hợp hệ
+thống degrade thay vì báo lỗi toàn bộ.
+
+![Dừng course-service.](assets/web-degraded-course.png)
+
+![Dừng student-service.](assets/web-degraded-student.png)
 
 ## Tự đánh giá theo thang điểm
 
