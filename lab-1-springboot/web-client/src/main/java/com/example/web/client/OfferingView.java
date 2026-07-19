@@ -1,7 +1,7 @@
 package com.example.web.client;
 
-/** One enriched transcript row (from enrollment-service's aggregation). */
-public class EnrolledCourseView {
+/** The web client's view of a course offering (from course-service). */
+public class OfferingView {
 
     private String offeringCode;
     private String courseCode;
@@ -11,9 +11,7 @@ public class EnrolledCourseView {
     private Integer year;
     private Integer semester;
     private String section;
-    private String status;
-    private Double grade;
-    private boolean detailsAvailable;
+    private String instructor;
 
     public String getOfferingCode() {
         return offeringCode;
@@ -79,27 +77,11 @@ public class EnrolledCourseView {
         this.section = section;
     }
 
-    public String getStatus() {
-        return status;
+    public String getInstructor() {
+        return instructor;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public Double getGrade() {
-        return grade;
-    }
-
-    public void setGrade(Double grade) {
-        this.grade = grade;
-    }
-
-    public boolean isDetailsAvailable() {
-        return detailsAvailable;
-    }
-
-    public void setDetailsAvailable(boolean detailsAvailable) {
-        this.detailsAvailable = detailsAvailable;
+    public void setInstructor(String instructor) {
+        this.instructor = instructor;
     }
 }

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thêm sinh viên</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: topbar}"></header>
+
+<main>
+    <p><a th:href="@{/students}">&larr; Danh sách sinh viên</a></p>
+    <h1>Thêm sinh viên</h1>
+
+    <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+    <form class="form" method="post" th:action="@{/students}" th:object="${studentForm}">
+        <label>Mã sinh viên
+            <input type="text" th:field="*{studentCode}" placeholder="VD: SV010" required>
+        </label>
+        <label>Họ tên
+            <input type="text" th:field="*{fullName}" required>
+        </label>
+        <label>Email
+            <input type="email" th:field="*{email}" required>
+        </label>
+        <label>Ngành
+            <input type="text" th:field="*{major}">
+        </label>
+        <label>Khóa (năm nhập học)
+            <input type="number" th:field="*{enrollmentYear}" placeholder="VD: 2025">
+        </label>
+        <div class="actions">
+            <button class="btn primary" type="submit">Lưu</button>
+            <a class="btn" th:href="@{/students}">Hủy</a>
+        </div>
+    </form>
+</main>
+</body>
+</html>

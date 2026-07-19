@@ -11,10 +11,12 @@ Four runtime services plus a Eureka registry:
 
 - **discovery-server** - the Eureka registry. Nothing else registers with
   itself; it only holds the registry.
-- **student-service**, **course-service** - each owns one catalog and its own
-  database.
-- **enrollment-service** - owns enrollment records and *composes* a student's
-  full enrollment view by calling the other two.
+- **student-service** - owns the student catalog and its own database.
+- **course-service** - owns the course catalog *and* its offerings (a course
+  opened in a year / semester / section), in its own database.
+- **enrollment-service** - owns enrollment records (each pointing at an offering)
+  and *composes* the cross-service views (a student's transcript with GPA, and an
+  offering's attendee list) by calling the other two.
 - **web-client** - a server-rendered UI with no database of its own.
 
 **No shared database.** Each service has its own in-memory H2. This is the rule
@@ -22,17 +24,19 @@ that makes them real services rather than modules of one app: there is no
 cross-service table, no cross-service join, no shared schema.
 
 **Reference by business key, hydrate over the API.** enrollment-service stores
-only `studentCode` and `courseCode` on each enrollment - not foreign keys into
+only `studentCode` and `offeringCode` on each enrollment - not foreign keys into
 other services' tables (which do not exist here) and not copies of names/titles.
-At read time it calls student-service and course-service to resolve the
-human-readable details. This is the canonical microservice pattern and it is the
-core thing the aggregation endpoint demonstrates.
+The `offeringCode` (e.g. `CS101-2025-1-01`) encodes course + year + semester +
+section. At read time it calls student-service and course-service
+(`GET /api/offerings/{offeringCode}`) to resolve the human-readable details. This
+is the canonical microservice pattern and it is the core thing the aggregation
+endpoints demonstrate.
 
 ## Contracts: no shared DTO module
 
 Each service defines its own DTOs, and each **consumer** declares its own view of
 a producer's response (a "consumer-driven" view) that takes only the fields it
-needs - see `enrollment-service`'s `client/StudentDto` and `client/CourseDto`,
+needs - see `enrollment-service`'s `client/StudentDto` and `client/OfferingDto`,
 which are deliberate subsets of the producers' responses. There is intentionally
 **no shared `common` jar**: a shared contract library would couple the services
 at build time, which is exactly what we are trying to avoid. Unknown JSON fields
@@ -48,6 +52,16 @@ hardcoded URL: instances can move, scale out, or restart on new ports without an
 config change in callers; a caller can be load-balanced across instances; and
 there is a single source of truth for "where is X".
 
+## Derived academics (GPA / credits)
+
+enrollment-service computes a student's totals and cumulative GPA during the
+transcript aggregation (it already fetches each offering's credits from
+course-service): credits earned (COMPLETED), credits in progress (REGISTERED),
+and a credit-weighted GPA on a 0-10 scale over completed graded courses. Keeping
+this in the service (not the web client) means it is computed once, close to the
+data, and reusable - mirroring the "expose an academic-summary endpoint" note
+from the FastAPI lab.
+
 ## Failure handling (not just the happy path)
 
 The aggregation must not collapse because one downstream is momentarily down.
@@ -57,8 +71,9 @@ The aggregation must not collapse because one downstream is momentarily down.
 - **Circuit breaker + fallbacks (Resilience4j).** Each Feign call is wrapped in a
   circuit breaker (`spring.cloud.openfeign.circuitbreaker.enabled=true`) with a
   `FallbackFactory`. On failure:
-  - course-service down -> the fallback returns a placeholder carrying just the
-    `courseCode`; the row still appears, flagged `detailsAvailable=false`.
+  - course-service down -> the fallback returns a placeholder derived from the
+    `offeringCode` itself (course code + term parsed from the key); the row still
+    appears, flagged `detailsAvailable=false`.
   - student-service down -> the fallback returns null; the response omits student
     details but still lists the enrollments (which come from this service's own
     DB).
@@ -78,10 +93,14 @@ The aggregation must not collapse because one downstream is momentarily down.
 - **Config Server / externalized config:** not added. Per-service
   `application.yml` is enough; Eureka is the only Spring Cloud infrastructure the
   lab requires.
-- **Term / CourseOffering richness** (from the earlier FastAPI lab): dropped.
-  Capacity, schedule, and registration windows would add domain depth that
-  crowds out the discovery/Feign focus and complicate cross-service references.
-  The triad Student / Course / Enrollment is enough to show the pattern.
+- **CourseOffering** (year / semester / section / instructor) is included so
+  enrollments carry a term and courses show their sections + attendees. Still
+  omitted on purpose: capacity, weekly schedule, and registration windows (the
+  registration-rules richness from the earlier FastAPI lab), which would add
+  domain depth without serving the discovery/Feign learning goal.
+- **Writes kept minimal.** The only writes are `POST /api/students` (add student,
+  the one create the rubric asks for) and `POST /api/enrollments`. Courses and
+  offerings are seed-only; the web client exposes just the add-student form.
 
 ## Technology choices
 
@@ -120,7 +139,7 @@ The aggregation must not collapse because one downstream is momentarily down.
   the 10s intervals shrink it.
 - The `partial` flag intentionally does not distinguish "student has zero
   enrollments" from "student-service down" at the enrollment level - enrollments
-  always come from the local DB; only the student block and per-course details
-  can degrade.
+  always come from the local DB; only the student block and per-offering (course)
+  details can degrade.
 - Tests run against mocked Feign clients (unit) and MockMvc web slices, so they
   need neither a running Eureka nor the other services.

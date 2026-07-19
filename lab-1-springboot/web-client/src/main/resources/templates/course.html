@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết học phần</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: topbar}"></header>
+
+<main>
+    <p><a th:href="@{/courses}">&larr; Danh sách học phần</a></p>
+
+    <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+    <div th:if="${course}">
+        <section class="card">
+            <h1>
+                <span th:text="${course.courseCode}">CS101</span>
+                &middot;
+                <span th:text="${course.title}">Introduction to Programming</span>
+            </h1>
+            <dl class="info">
+                <div><dt>Tín chỉ</dt><dd th:text="${course.credits}">3</dd></div>
+                <div><dt>Khoa</dt><dd th:text="${course.department}">Computer Science</dd></div>
+            </dl>
+            <p class="muted" th:if="${course.description}" th:text="${course.description}">Mô tả học phần.</p>
+        </section>
+
+        <h2>Các lớp học phần đã mở</h2>
+        <p class="muted" th:if="${#lists.isEmpty(offerings)}">Chưa có lớp học phần nào được mở.</p>
+
+        <section class="offering" th:each="item : ${offerings}">
+            <h3 class="offering-head">
+                <span th:text="'Năm ' + ${item.offering.year}">Năm 2024</span>
+                &middot; <span th:text="'HK' + ${item.offering.semester}">HK1</span>
+                &middot; <span th:text="'Lớp ' + ${item.offering.section}">Lớp 01</span>
+                <span class="muted" th:if="${item.offering.instructor}"
+                      th:text="'&middot; GV: ' + ${item.offering.instructor}">GV</span>
+            </h3>
+
+            <div class="alert warn" th:if="${item.partial}">
+                Một số tên sinh viên không tải được (student-service không sẵn sàng).
+            </div>
+
+            <table th:unless="${#lists.isEmpty(item.attendees)}">
+                <thead>
+                <tr><th>Mã SV</th><th>Họ tên</th><th>Ngành</th><th>Trạng thái</th><th>Điểm</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="a : ${item.attendees}">
+                    <td th:text="${a.studentCode}">SV001</td>
+                    <td th:text="${a.studentAvailable ? a.fullName : '(không có thông tin)'}">Nguyen Van An</td>
+                    <td th:text="${a.major}">Computer Science</td>
+                    <td><span class="badge" th:classappend="${'st-' + a.status}" th:text="${a.status}">COMPLETED</span></td>
+                    <td th:text="${a.grade != null ? a.grade : '-'}">8.5</td>
+                </tr>
+                </tbody>
+            </table>
+            <p class="muted" th:if="${#lists.isEmpty(item.attendees)}">Chưa có sinh viên đăng ký lớp này.</p>
+        </section>
+    </div>
+</main>
+</body>
+</html>

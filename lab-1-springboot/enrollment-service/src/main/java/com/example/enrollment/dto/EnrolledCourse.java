@@ -1,16 +1,20 @@
 package com.example.enrollment.dto;
 
 /**
- * One row in a student's enrollment list: the enrollment facts owned by this
- * service (status, grade) joined with the course details fetched from
+ * One row in a student's transcript: the enrollment facts owned by this service
+ * (status, grade) joined with the offering + course details fetched from
  * course-service. {@code detailsAvailable} is false when course-service could
- * not be reached and only the {@code courseCode} is known.
+ * not be reached (only the codes are known).
  */
 public record EnrolledCourse(
+        String offeringCode,
         String courseCode,
-        String title,
+        String courseTitle,
         Integer credits,
         String department,
+        Integer year,
+        Integer semester,
+        String section,
         String status,
         Double grade,
         boolean detailsAvailable) {

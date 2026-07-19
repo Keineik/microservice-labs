@@ -8,7 +8,7 @@ import com.example.enrollment.domain.Enrollment;
 public record EnrollmentResponse(
         Long id,
         String studentCode,
-        String courseCode,
+        String offeringCode,
         String status,
         Double grade,
         Instant registeredAt) {
@@ -17,7 +17,7 @@ public record EnrollmentResponse(
         return new EnrollmentResponse(
                 enrollment.getId(),
                 enrollment.getStudentCode(),
-                enrollment.getCourseCode(),
+                enrollment.getOfferingCode(),
                 enrollment.getStatus().name(),
                 enrollment.getGrade(),
                 enrollment.getRegisteredAt());

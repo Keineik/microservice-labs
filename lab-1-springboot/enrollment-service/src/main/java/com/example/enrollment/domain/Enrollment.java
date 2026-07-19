@@ -13,15 +13,19 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 /**
- * A student's registration in a course.
+ * A student's registration in a course offering.
  *
- * <p>Note there are no foreign keys to student or course: those live in other
+ * <p>There are no foreign keys to student or offering: those live in other
  * services and other databases. This service stores only the business keys
- * ({@code studentCode}, {@code courseCode}) and resolves the human-readable
- * details at read time by calling student-service and course-service.
+ * ({@code studentCode}, {@code offeringCode}) and resolves the human-readable
+ * details at read time by calling student-service and course-service. The
+ * offeringCode encodes the course, year, semester and section.
  */
 @Entity
-@Table(name = "enrollments", indexes = @Index(name = "idx_enrollment_student", columnList = "studentCode"))
+@Table(name = "enrollments", indexes = {
+        @Index(name = "idx_enrollment_student", columnList = "studentCode"),
+        @Index(name = "idx_enrollment_offering", columnList = "offeringCode")
+})
 public class Enrollment {
 
     @Id
@@ -31,8 +35,8 @@ public class Enrollment {
     @Column(nullable = false, length = 20)
     private String studentCode;
 
-    @Column(nullable = false, length = 20)
-    private String courseCode;
+    @Column(nullable = false, length = 40)
+    private String offeringCode;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -47,9 +51,9 @@ public class Enrollment {
         // Required by JPA.
     }
 
-    public Enrollment(String studentCode, String courseCode, EnrollmentStatus status, Double grade) {
+    public Enrollment(String studentCode, String offeringCode, EnrollmentStatus status, Double grade) {
         this.studentCode = studentCode;
-        this.courseCode = courseCode;
+        this.offeringCode = offeringCode;
         this.status = status;
         this.grade = grade;
         this.registeredAt = Instant.now();
@@ -63,8 +67,8 @@ public class Enrollment {
         return studentCode;
     }
 
-    public String getCourseCode() {
-        return courseCode;
+    public String getOfferingCode() {
+        return offeringCode;
     }
 
     public EnrollmentStatus getStatus() {

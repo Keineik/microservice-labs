@@ -8,7 +8,8 @@ public record CourseResponse(
         String courseCode,
         String title,
         int credits,
-        String department) {
+        String department,
+        String description) {
 
     public static CourseResponse from(Course course) {
         return new CourseResponse(
@@ -16,6 +17,7 @@ public record CourseResponse(
                 course.getCourseCode(),
                 course.getTitle(),
                 course.getCredits(),
-                course.getDepartment());
+                course.getDepartment(),
+                course.getDescription());
     }
 }

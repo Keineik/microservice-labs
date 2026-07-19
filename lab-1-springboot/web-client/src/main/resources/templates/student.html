@@ -3,17 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chi tiết đăng ký học phần</title>
+    <title>Chi tiết sinh viên</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
-<header class="topbar">
-    <span class="brand">Hệ thống đăng ký học phần</span>
-    <span class="subtitle">Web Client (Thymeleaf) &middot; gọi service qua Eureka + OpenFeign</span>
-</header>
+<header th:replace="~{fragments :: topbar}"></header>
 
 <main>
-    <p><a th:href="@{/}">&larr; Danh sách sinh viên</a></p>
+    <p><a th:href="@{/students}">&larr; Danh sách sinh viên</a></p>
 
     <div class="alert error" th:if="${error}" th:text="${error}"></div>
 
@@ -28,38 +25,63 @@
         <section class="card">
             <h1 th:if="${data.student != null}" th:text="${data.student.fullName}">Họ tên</h1>
             <h1 th:if="${data.student == null}" th:text="${data.studentCode}">Mã SV</h1>
-
-            <dl th:if="${data.student != null}" class="info">
+            <dl class="info" th:if="${data.student != null}">
                 <div><dt>Mã SV</dt><dd th:text="${data.student.studentCode}">SV001</dd></div>
                 <div><dt>Email</dt><dd th:text="${data.student.email}">an@example.edu</dd></div>
                 <div><dt>Ngành</dt><dd th:text="${data.student.major}">Computer Science</dd></div>
                 <div><dt>Khóa</dt><dd th:text="${data.student.enrollmentYear}">2022</dd></div>
             </dl>
-            <p th:if="${data.student == null}" class="muted">
-                Không lấy được thông tin sinh viên (student-service không sẵn sàng).
-            </p>
         </section>
 
-        <h2>Học phần đã đăng ký</h2>
-        <table th:unless="${#lists.isEmpty(data.enrollments)}">
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" th:text="${data.totalCourses}">0</div>
+                <div class="stat-label">Học phần</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" th:text="${data.creditsEarned}">0</div>
+                <div class="stat-label">Tín chỉ tích lũy</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" th:text="${data.creditsInProgress}">0</div>
+                <div class="stat-label">Tín chỉ đang học</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" th:text="${data.cumulativeGpa != null ? data.cumulativeGpa : '-'}">-</div>
+                <div class="stat-label">GPA (thang 10)</div>
+            </div>
+        </div>
+
+        <h2>Học phần đã hoàn thành</h2>
+        <table>
             <thead>
-            <tr>
-                <th>Mã HP</th>
-                <th>Tên học phần</th>
-                <th>Tín chỉ</th>
-                <th>Khoa</th>
-                <th>Trạng thái</th>
-                <th>Điểm</th>
-            </tr>
+            <tr><th>Mã HP</th><th>Tên học phần</th><th>Năm</th><th>HK</th><th>Tín chỉ</th><th>Điểm</th></tr>
             </thead>
             <tbody>
-            <tr th:each="c : ${data.enrollments}">
+            <tr th:each="c : ${data.enrollments}" th:if="${c.status == 'COMPLETED'}">
                 <td th:text="${c.courseCode}">CS101</td>
-                <td th:text="${c.detailsAvailable ? c.title : '(không có thông tin)'}">Intro</td>
+                <td th:text="${c.detailsAvailable ? c.courseTitle : '(không có thông tin)'}">Intro</td>
+                <td th:text="${c.year}">2024</td>
+                <td th:text="${c.semester != null ? 'HK' + c.semester : ''}">HK1</td>
                 <td th:text="${c.credits}">3</td>
-                <td th:text="${c.department}">Computer Science</td>
-                <td><span class="badge" th:classappend="${'st-' + c.status}" th:text="${c.status}">REGISTERED</span></td>
-                <td th:text="${c.grade != null ? c.grade : '-'}">-</td>
+                <td th:text="${c.grade != null ? c.grade : '-'}">8.5</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <h2>Học phần đang đăng ký</h2>
+        <table>
+            <thead>
+            <tr><th>Mã HP</th><th>Tên học phần</th><th>Năm</th><th>HK</th><th>Tín chỉ</th><th>Lớp</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="c : ${data.enrollments}" th:if="${c.status == 'REGISTERED'}">
+                <td th:text="${c.courseCode}">CS202</td>
+                <td th:text="${c.detailsAvailable ? c.courseTitle : '(không có thông tin)'}">Database</td>
+                <td th:text="${c.year}">2025</td>
+                <td th:text="${c.semester != null ? 'HK' + c.semester : ''}">HK1</td>
+                <td th:text="${c.credits}">3</td>
+                <td th:text="${c.section}">01</td>
             </tr>
             </tbody>
         </table>

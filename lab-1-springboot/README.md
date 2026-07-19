@@ -34,13 +34,15 @@ service name** (never a hardcoded URL).
 |---|---|---|---|
 | discovery-server | 8761 | the Eureka registry | dashboard at `/` |
 | student-service | 8081 | students (H2) | `GET /api/students`, `GET /api/students/{code}`, `POST /api/students` |
-| course-service | 8082 | courses (H2) | `GET /api/courses`, `GET /api/courses/{code}` |
-| enrollment-service | 8083 | enrollments (H2) | `GET /api/enrollments/student/{code}` (aggregation), `POST /api/enrollments` |
-| web-client | 8080 | nothing (UI only) | `/`, `/students/{code}` |
+| course-service | 8082 | courses + offerings (H2) | `GET /api/courses`, `GET /api/courses/{code}`, `GET /api/courses/{code}/offerings`, `GET /api/offerings/{offeringCode}` |
+| enrollment-service | 8083 | enrollments (H2) | `GET /api/enrollments/student/{code}` (transcript + GPA), `GET /api/enrollments/offering/{offeringCode}` (attendees), `POST /api/enrollments` |
+| web-client | 8080 | nothing (UI only) | `/students`, `/students/new`, `/students/{code}`, `/courses`, `/courses/{code}` |
 
 - **No shared database.** Each service has its own in-memory H2, seeded on
   startup. enrollment-service stores only the business keys (`studentCode`,
-  `courseCode`) and resolves details from the other services at read time.
+  `offeringCode`) and resolves student/offering/course details from the other
+  services at read time. An `offeringCode` (e.g. `CS101-2025-1-01`) encodes the
+  course, year, semester and section.
 - **Stack:** Java 17, Spring Boot 4.1.0, Spring Cloud 2025.1.2 (Oakwood),
   Maven (multi-module). See [`docs/design_notes.md`](docs/design_notes.md) for
   the rationale.
@@ -62,8 +64,9 @@ Then open:
 
 - **Eureka dashboard:** http://localhost:8761 (all four services listed under
   "Instances currently registered with Eureka")
-- **Web client:** http://localhost:8080 (student list -> click "Xem đăng ký"
-  to see a student's enrolled courses)
+- **Web client:** http://localhost:8080 (registrar console: browse students and
+  courses, view a student's transcript + GPA, a course's offerings + attendees,
+  and add a student)
 
 The first `make up` downloads Maven dependencies inside the build image, so it
 takes a few minutes. Subsequent builds are cached.

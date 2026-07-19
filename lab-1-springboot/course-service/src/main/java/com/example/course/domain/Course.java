@@ -5,11 +5,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 /**
  * A course catalog entry. {@code courseCode} is the business key other services
- * use to reference a course.
+ * use to reference a course. A course is opened for enrollment as one or more
+ * {@link CourseOffering}s (per year/semester/section).
  */
 @Entity
 @Table(name = "courses")
@@ -31,15 +33,19 @@ public class Course {
     @Column(length = 100)
     private String department;
 
+    @Lob
+    private String description;
+
     protected Course() {
         // Required by JPA.
     }
 
-    public Course(String courseCode, String title, int credits, String department) {
+    public Course(String courseCode, String title, int credits, String department, String description) {
         this.courseCode = courseCode;
         this.title = title;
         this.credits = credits;
         this.department = department;
+        this.description = description;
     }
 
     public Long getId() {
@@ -60,5 +66,9 @@ public class Course {
 
     public String getDepartment() {
         return department;
+    }
+
+    public String getDescription() {
+        return description;
     }
 }

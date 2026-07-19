@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học phần</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: topbar}"></header>
+
+<main>
+    <h1>Học phần</h1>
+
+    <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+    <table th:unless="${#lists.isEmpty(courses)}">
+        <thead>
+        <tr>
+            <th>Mã HP</th>
+            <th>Tên học phần</th>
+            <th>Tín chỉ</th>
+            <th>Khoa</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="c : ${courses}">
+            <td th:text="${c.courseCode}">CS101</td>
+            <td th:text="${c.title}">Introduction to Programming</td>
+            <td th:text="${c.credits}">3</td>
+            <td th:text="${c.department}">Computer Science</td>
+            <td><a class="btn" th:href="@{/courses/{code}(code=${c.courseCode})}">Xem</a></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p class="muted" th:if="${#lists.isEmpty(courses)}">Không có dữ liệu học phần.</p>
+</main>
+</body>
+</html>

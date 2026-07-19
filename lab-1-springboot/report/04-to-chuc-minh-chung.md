@@ -17,7 +17,6 @@ lab-1-springboot/
   deploy/docker/           Dockerfile multi-stage (import CA vào JVM truststore)
   deploy/compose/          docker-compose.yml (5 service, gated theo Eureka)
   docs/design_notes.md     lý giải thiết kế và các đánh đổi
-  report/                  báo cáo (Pandoc + Typst)
   Makefile
 ```
 
@@ -47,30 +46,37 @@ currently registered with Eureka".
 
 ![Eureka Dashboard với các service đã đăng ký.](assets/eureka-dashboard.png)
 
-### Web Client hiển thị thông tin sinh viên và học phần đã đăng ký
+### Web Client (giao diện giáo vụ)
 
-Ảnh chụp danh sách sinh viên và trang chi tiết một sinh viên kèm bảng các học
-phần đã đăng ký (mã học phần, tên, tín chỉ, trạng thái, điểm).
+Web Client đóng vai trò console cho giáo vụ. Mỗi màn hình kèm một ảnh minh chứng:
 
-![Danh sách sinh viên trên Web Client.](assets/web-students.png)
+![Danh sách sinh viên (kèm nút thêm mới).](assets/web-students.png)
 
-![Chi tiết đăng ký học phần của một sinh viên.](assets/web-student-detail.png)
+![Form thêm sinh viên.](assets/web-student-form.png)
 
-### Minh chứng suy giảm mềm (tùy chọn)
+![Chi tiết một sinh viên: thông tin, tổng tín chỉ, GPA và bảng điểm.](assets/web-student-detail.png)
+
+![Danh sách học phần.](assets/web-courses.png)
+
+![Chi tiết một học phần: các lớp đã mở theo năm / học kỳ / lớp kèm danh sách sinh viên theo học và kết quả.](assets/web-course-detail.png)
+
+### Minh chứng graceful degradation (tùy chọn)
 
 Khi dừng course-service rồi tải lại trang, các học phần vẫn được liệt kê nhưng
 phần chi tiết được đánh dấu là không có, kèm banner cảnh báo. Điều này minh họa
 cơ chế fallback của Resilience4j.
 
-<!-- TODO: chèn ảnh assets/web-degraded.png nếu muốn minh họa luồng suy giảm mềm. -->
+<!-- TODO: chèn ảnh assets/web-degraded.png nếu muốn minh họa luồng graceful degradation. -->
 
 ## Tự đánh giá theo thang điểm
 
 - **Hoàn thành Discovery Server và các service (2.0 điểm):** Eureka Server và bốn
   service chạy độc lập, đăng ký với Eureka.
 - **Xây dựng đầy đủ các chức năng yêu cầu (3.0 điểm):** student-service (xem danh
-  sách, xem chi tiết, thêm mới); course-service (xem danh sách, xem chi tiết);
-  enrollment-service (tổng hợp qua service khác); web-client (hiển thị).
+  sách, xem chi tiết, thêm mới); course-service (xem danh sách, xem chi tiết, các
+  lớp học phần theo năm/học kỳ); enrollment-service (bảng điểm + GPA của sinh
+  viên và danh sách sinh viên theo học một lớp, tổng hợp qua service khác);
+  web-client (giao diện giáo vụ hiển thị đầy đủ).
 - **Giao tiếp đúng qua Eureka/OpenFeign (2.0 điểm):** gọi theo tên service qua
   OpenFeign, kèm timeout và fallback.
 - **Báo cáo rõ kiến trúc và luồng xử lý (2.0 điểm):** sơ đồ kiến trúc, vai trò

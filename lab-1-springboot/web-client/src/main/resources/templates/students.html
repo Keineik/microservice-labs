@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Danh sách sinh viên</title>
+    <title>Sinh viên</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
-<header class="topbar">
-    <span class="brand">Hệ thống đăng ký học phần</span>
-    <span class="subtitle">Web Client (Thymeleaf) &middot; gọi service qua Eureka + OpenFeign</span>
-</header>
+<header th:replace="~{fragments :: topbar}"></header>
 
 <main>
-    <h1>Danh sách sinh viên</h1>
+    <div class="page-head">
+        <h1>Sinh viên</h1>
+        <a class="btn primary" th:href="@{/students/new}">+ Thêm sinh viên</a>
+    </div>
 
     <div class="alert error" th:if="${error}" th:text="${error}"></div>
 
@@ -35,9 +35,7 @@
             <td th:text="${s.email}">an@example.edu</td>
             <td th:text="${s.major}">Computer Science</td>
             <td th:text="${s.enrollmentYear}">2022</td>
-            <td>
-                <a class="btn" th:href="@{/students/{code}(code=${s.studentCode})}">Xem đăng ký</a>
-            </td>
+            <td><a class="btn" th:href="@{/students/{code}(code=${s.studentCode})}">Xem</a></td>
         </tr>
         </tbody>
     </table>

@@ -10,4 +10,7 @@ public interface EnrollmentClient {
 
     @GetMapping("/student/{studentCode}")
     StudentEnrollmentsView getStudentEnrollments(@PathVariable("studentCode") String studentCode);
+
+    @GetMapping("/offering/{offeringCode}")
+    OfferingAttendeesView getOfferingAttendees(@PathVariable("offeringCode") String offeringCode);
 }
